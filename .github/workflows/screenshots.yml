@@ -1,0 +1,44 @@
+name: Screenshots
+
+# Renders the app in demo mode on a macOS runner and uploads the screenshots as
+# an artifact. Run it by hand (Actions > Screenshots > Run workflow) to also
+# commit them to docs/screenshots on the chosen branch. Pushes only upload the
+# artifact, so bot commits never become a pull request's head.
+on:
+  workflow_dispatch:
+  push:
+    branches: ['claude/**']
+    paths-ignore: ['docs/screenshots/**']
+
+permissions:
+  contents: write
+
+jobs:
+  screenshots:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build app
+        run: scripts/build-app.sh debug
+
+      - name: Capture screenshots
+        run: scripts/take-screenshots.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: docs/screenshots
+
+      - name: Commit screenshots
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/screenshots
+          if git diff --cached --quiet; then
+            echo "Screenshots unchanged"
+          else
+            git commit -m "Update screenshots"
+            git push
+          fi

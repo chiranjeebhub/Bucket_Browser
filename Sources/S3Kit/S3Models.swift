@@ -54,6 +54,16 @@ public struct S3ObjectMetadata: Sendable {
     public var storageClass: String?
     /// `x-amz-meta-*` user metadata, keyed without the prefix.
     public var userMetadata: [String: String]
+
+    public init(contentType: String? = nil, contentLength: Int64? = nil, lastModified: Date? = nil,
+                etag: String? = nil, storageClass: String? = nil, userMetadata: [String: String] = [:]) {
+        self.contentType = contentType
+        self.contentLength = contentLength
+        self.lastModified = lastModified
+        self.etag = etag
+        self.storageClass = storageClass
+        self.userMetadata = userMetadata
+    }
 }
 
 enum S3ResponseParser {

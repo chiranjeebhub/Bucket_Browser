@@ -223,6 +223,10 @@ final class BrowserModel {
     }
 
     func load(_ prefix: String) {
+        if DemoMode.isEnabled, let location {
+            listings[prefix] = BrowserItem.items(from: DemoMode.listing(bucket: location.bucket, prefix: prefix), prefix: prefix)
+            return
+        }
         guard let location, let client = try? accounts.client(for: location.accountID) else {
             if let location { loadErrors[location.prefix] = "Could not read this account’s credentials from the Keychain." }
             return
@@ -507,6 +511,7 @@ final class BrowserModel {
     }
 
     func metadata(for item: BrowserItem) async throws -> S3ObjectMetadata {
+        if DemoMode.isEnabled { return DemoMode.metadata(for: item) }
         let (client, location) = try resolveClient()
         return try await client.headObject(bucket: location.bucket, key: item.key)
     }
