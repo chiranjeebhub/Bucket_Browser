@@ -1,4 +1,4 @@
-# Bucket Browser
+# <img src="Resources/AppIcon.png" width="64" align="center" alt=""> Bucket Browser
 
 A native macOS app for browsing Amazon S3 and Cloudflare R2 buckets the way you browse files in Finder. Written in SwiftUI with a small, dependency-free S3 client.
 
@@ -69,6 +69,10 @@ BUCKET_BROWSER_DEMO=1 swift run BucketBrowser
 ```
 
 `scripts/take-screenshots.sh` uses demo mode to capture the images above. The **Screenshots** workflow runs it on a macOS runner and commits the results to `docs/screenshots`.
+
+## App icon
+
+The icon's source is `Resources/AppIcon.svg`. To regenerate `Resources/AppIcon.png`, run `python3 scripts/render-icon.py` (it needs `cairosvg` and `Pillow`). `scripts/build-app.sh` turns the PNG into `AppIcon.icns`.
 
 ## Tests
 

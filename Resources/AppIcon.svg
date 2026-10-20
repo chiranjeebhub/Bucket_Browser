@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Bucket Browser app icon: a Finder-style folder carrying a cloud with
+       upload/download arrows. scripts/render-icon.py adds the drop shadows. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2E3F70"/>
+      <stop offset="1" stop-color="#111831"/>
+    </linearGradient>
+    <linearGradient id="back" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4FA9EE"/>
+      <stop offset="1" stop-color="#2F86D6"/>
+    </linearGradient>
+    <linearGradient id="front" x1="0" y1="398" x2="0" y2="744" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8BD0FF"/>
+      <stop offset="1" stop-color="#45A8F0"/>
+    </linearGradient>
+    <linearGradient id="cloud" x1="0" y1="440" x2="0" y2="690" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#DDEEFC"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFB547"/>
+      <stop offset="1" stop-color="#F38020"/>
+    </linearGradient>
+  </defs>
+
+  <g id="tile">
+    <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)"/>
+    <rect x="102" y="102" width="820" height="820" rx="183" fill="none" stroke="#FFFFFF" stroke-opacity="0.10" stroke-width="4"/>
+  </g>
+
+  <g id="folder">
+    <path d="M222 330 Q222 292 260 292 H420 Q444 292 458 310 L486 346 H764 Q802 346 802 384 V700 Q802 738 764 738 H260 Q222 738 222 700 Z" fill="url(#back)"/>
+    <path d="M222 430 Q222 398 254 398 H770 Q802 398 802 430 V706 Q802 744 764 744 H260 Q222 744 222 706 Z" fill="url(#front)"/>
+    <rect x="222" y="398" width="580" height="5" rx="2.5" fill="#FFFFFF" fill-opacity="0.5"/>
+  </g>
+
+  <g id="cloud" fill="url(#cloud)" transform="translate(-25 0)">
+    <circle cx="418" cy="616" r="66"/>
+    <circle cx="506" cy="552" r="100"/>
+    <circle cx="616" cy="588" r="80"/>
+    <circle cx="676" cy="630" r="52"/>
+    <rect x="418" y="600" width="258" height="82" rx="0"/>
+    <rect x="346" y="610" width="382" height="72" rx="36"/>
+  </g>
+
+  <g id="arrows" transform="translate(-25 0)" fill="none" stroke-width="22" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M500 650 V550 M466 584 L500 550 L534 584" stroke="#2F86D6"/>
+    <path d="M594 560 V660 M560 626 L594 660 L628 626" stroke="url(#accent)"/>
+  </g>
+</svg>
