@@ -2,7 +2,7 @@ import S3Kit
 import SwiftUI
 
 enum AccountEditorTarget: Identifiable {
-    case new
+    case new(S3Provider)
     case edit(Account)
 
     var id: String {
@@ -35,9 +35,9 @@ struct AccountEditorView: View {
 
     init(target: AccountEditorTarget) {
         switch target {
-        case .new:
+        case let .new(provider):
             isNew = true
-            _account = State(initialValue: Account(name: S3Provider.r2.displayName, provider: .r2))
+            _account = State(initialValue: Account(name: provider.displayName, provider: provider))
         case let .edit(existing):
             isNew = false
             _account = State(initialValue: existing)

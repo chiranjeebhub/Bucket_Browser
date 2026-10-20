@@ -16,6 +16,8 @@ enum DemoMode {
     static var prefix: String { environment["BB_DEMO_PREFIX"] ?? "" }
     static var selectedName: String? { environment["BB_DEMO_SELECT"] }
     static var showsInspector: Bool { environment["BB_DEMO_INSPECTOR"] == "1" }
+    /// Starts with no accounts, to show the welcome screen.
+    static var startsEmpty: Bool { environment["BB_DEMO_EMPTY"] == "1" }
 
     static var appearance: NSAppearance? {
         switch environment["BB_DEMO_APPEARANCE"] {

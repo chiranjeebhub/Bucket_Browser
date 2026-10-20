@@ -8,6 +8,10 @@ A native macOS app for browsing Amazon S3 and Cloudflare R2 buckets the way you 
 | --- | --- |
 | ![Icon view](docs/screenshots/icon-view.png) | ![Column view](docs/screenshots/column-view.png) |
 
+Before you add an account, the window shows a welcome screen with a card for each service:
+
+![Welcome screen](docs/screenshots/welcome.png)
+
 ## Features
 
 - **Sidebar of accounts and buckets.** Add as many AWS, R2 or other S3-compatible accounts as you like; each shows its buckets like Finder's Locations.
@@ -20,6 +24,7 @@ A native macOS app for browsing Amazon S3 and Cloudflare R2 buckets the way you 
 - **Shareable links:** copy a presigned URL that expires in an hour, a day or seven days, or copy the `s3://` URI.
 - **Transfers popover** with progress, cancel and Show in Finder. Large files upload in parallel multipart chunks.
 - **Credentials live in the Keychain.** Account settings (names, regions, endpoints) go in user defaults; access keys never do.
+- **iCloud sync.** In a build signed with a Developer ID, accounts and keys sync through iCloud Keychain, so they come back after a reinstall and show up on your other Macs.
 
 ## Requirements
 
@@ -41,6 +46,33 @@ open "build/Bucket Browser.app"
 You can also open `Package.swift` in Xcode and run the `BucketBrowser` scheme.
 
 Every CI run on GitHub builds a universal app and attaches it to the run as `BucketBrowser-app`. The app is ad-hoc signed, so the first time you open a downloaded copy, Control-click it and choose **Open**.
+
+## iCloud sync
+
+Apple only lets apps signed by a developer team use iCloud Keychain. Ad-hoc signed builds (the default, and `swift run`) keep accounts on this Mac only, and **Settings › Accounts** says so. To build a copy that syncs:
+
+1. In [Certificates, Identifiers & Profiles](https://developer.apple.com/account/resources), register the App ID `com.bucketbrowser.app` under team `4TK5PNR392`. No extra capabilities are needed.
+2. Create a **Developer ID Application** certificate if you don't have one, and install it in your login keychain.
+3. Create a **Developer ID** provisioning profile for that App ID and download it.
+4. Build:
+
+   ```sh
+   SIGN_IDENTITY="Developer ID Application: Your Name (4TK5PNR392)" \
+   PROVISIONING_PROFILE=~/Downloads/BucketBrowser.provisionprofile \
+   scripts/build-app.sh
+   ```
+
+If Xcode manages your Developer ID certificate in the cloud, its private key isn't in your keychain and `SIGN_IDENTITY` won't work. Sign through Xcode instead. Run `scripts/build-app.sh`, then:
+
+```sh
+DEV_PROFILE=path/to/development.provisionprofile scripts/export-developer-id.sh
+```
+
+`DEV_PROFILE` is a Mac development profile for your team that covers `com.bucketbrowser.app`, such as the "Mac Team Provisioning Profile: *" that Xcode keeps in `~/Library/Developer/Xcode/UserData/Provisioning Profiles`. The script wraps the app in an archive and has `xcodebuild -exportArchive` sign it with Developer ID through the account you're signed in to in Xcode. The signed app is written to `build/export/Bucket Browser.app`.
+
+CI signs the app the same way when these repository secrets are set: `MACOS_CERTIFICATE_P12` (the certificate exported as .p12, base64 encoded), `MACOS_CERTIFICATE_PASSWORD`, and `MACOS_PROVISIONING_PROFILE` (base64 encoded). Add `NOTARY_APPLE_ID` and `NOTARY_PASSWORD` (an app-specific password) to have it notarized too.
+
+The first time a signed build runs, it moves any accounts saved by an unsigned build into iCloud Keychain. Make sure iCloud Keychain is on in System Settings › Apple Account › iCloud › Passwords & Keychain.
 
 ## Adding an account
 

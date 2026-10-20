@@ -19,7 +19,7 @@ struct BrowserWindow: View {
         .onAppear {
             guard model == nil else { return }
             let newModel = BrowserModel(accounts: accounts, transfers: transfers)
-            if DemoMode.isEnabled { Self.applyDemoSettings(to: newModel) }
+            if DemoMode.isEnabled && !DemoMode.startsEmpty { Self.applyDemoSettings(to: newModel) }
             model = newModel
         }
     }
@@ -47,13 +47,20 @@ struct BrowserView: View {
     @Environment(TransferManager.self) private var transfers
     @State private var accountEditor: AccountEditorTarget?
     @State private var showTransfers = false
+    @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     var body: some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
             SidebarView(model: model, accountEditor: $accountEditor)
                 .navigationSplitViewColumnWidth(min: 180, ideal: 220, max: 340)
         } detail: {
             DetailView(model: model, accountEditor: $accountEditor)
+        }
+        // With no accounts the sidebar and toolbar have nothing to show, so the window is just the welcome screen.
+        .toolbar(accounts.accounts.isEmpty ? .hidden : .visible, for: .windowToolbar)
+        .onAppear { if accounts.accounts.isEmpty { columnVisibility = .detailOnly } }
+        .onChange(of: accounts.accounts.isEmpty) { _, isEmpty in
+            withAnimation { columnVisibility = isEmpty ? .detailOnly : .all }
         }
         .navigationTitle(model.title)
         .navigationSubtitle(subtitle)
@@ -147,14 +154,7 @@ struct DetailView: View {
     @ViewBuilder
     private var content: some View {
         if accounts.accounts.isEmpty {
-            ContentUnavailableView {
-                Label("No Accounts", systemImage: "externaldrive.badge.plus")
-            } description: {
-                Text("Add an Amazon S3, Cloudflare R2 or other S3-compatible account to start browsing.")
-            } actions: {
-                Button("Add Account…") { accountEditor = .new }
-                    .buttonStyle(.borderedProminent)
-            }
+            WelcomeView(accountEditor: $accountEditor)
         } else if model.location == nil {
             ContentUnavailableView("Choose a Bucket", systemImage: "sidebar.left", description: Text("Select a bucket in the sidebar."))
         } else {
