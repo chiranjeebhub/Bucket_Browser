@@ -68,7 +68,7 @@ Launch with `BUCKET_BROWSER_DEMO=1` to browse made-up R2 and AWS buckets without
 BUCKET_BROWSER_DEMO=1 swift run BucketBrowser
 ```
 
-`scripts/take-screenshots.sh` uses demo mode to capture the images above. The **Screenshots** workflow runs it on a macOS runner and commits the results to `docs/screenshots`.
+`scripts/take-screenshots.sh` uses demo mode to capture the images above. The **Screenshots** workflow runs it on a macOS runner and uploads the images as an artifact. Run the workflow by hand to also commit them to `docs/screenshots`.
 
 ## App icon
 
