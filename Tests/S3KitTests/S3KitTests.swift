@@ -36,6 +36,14 @@ final class S3PathTests: XCTestCase {
         XCTAssertEqual(S3Path.ancestors(of: ""), [""])
         XCTAssertEqual(S3Path.ancestors(of: "a/b/"), ["", "a/", "a/b/"])
     }
+
+    func testEmptyComponentsArePreserved() {
+        XCTAssertEqual(S3Path.ancestors(of: "a//"), ["", "a/", "a//"])
+        XCTAssertEqual(S3Path.ancestors(of: "/x/"), ["", "/", "/x/"])
+        XCTAssertEqual(S3Path.name(of: "a//"), "")
+        XCTAssertEqual(S3Path.parent(of: "a//"), "a/")
+        XCTAssertEqual(S3Path.parent(of: "a//file"), "a//")
+    }
 }
 
 final class S3ClientURLTests: XCTestCase {

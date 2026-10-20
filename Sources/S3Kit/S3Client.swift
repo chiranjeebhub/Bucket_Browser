@@ -201,10 +201,11 @@ public final class S3Client: @unchecked Sendable {
 
             var etags = [String](repeating: "", count: partCount)
             try await withThrowingTaskGroup(of: (Int, String).self) { group in
+                let concurrency = max(1, multipartConcurrency)
                 var next = 0
                 var inFlight = 0
                 while next < partCount || inFlight > 0 {
-                    while inFlight < multipartConcurrency, next < partCount {
+                    while inFlight < concurrency, next < partCount {
                         let index = next
                         let offset = Int64(index) * partSize
                         let body = try await reader.read(offset: offset, length: Int(min(partSize, size - offset)))

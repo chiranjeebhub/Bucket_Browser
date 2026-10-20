@@ -74,20 +74,22 @@ final class TransferManager {
     /// `onComplete` runs on the main actor after each dropped item finishes.
     func upload(_ urls: [URL], client: S3Client, bucket: String, prefix: String, onComplete: @escaping @MainActor () -> Void) {
         for url in urls {
-            let files = Self.enumerateFiles(at: url, keyPrefix: prefix)
             let transfer = Transfer(name: url.lastPathComponent, direction: .upload, destinationDescription: "\(bucket)/\(prefix)")
-            transfer.totalBytes = files.reduce(0) { $0 + $1.size }
             transfers.insert(transfer, at: 0)
 
             transfer.task = Task {
                 let accessing = url.startAccessingSecurityScopedResource()
                 defer { if accessing { url.stopAccessingSecurityScopedResource() } }
                 do {
-                    var done: Int64 = 0
-                    if files.isEmpty, Self.isDirectory(url) {
-                        try await client.createFolder(bucket: bucket, prefix: prefix + url.lastPathComponent + "/")
+                    // Walking a large folder can take a while, so keep it off the main actor.
+                    let plan = await Task.detached { Self.plan(for: url, keyPrefix: prefix) }.value
+                    transfer.totalBytes = plan.files.reduce(0) { $0 + $1.size }
+                    for folder in plan.emptyFolders {
+                        try Task.checkCancellation()
+                        try await client.createFolder(bucket: bucket, prefix: folder)
                     }
-                    for file in files {
+                    var done: Int64 = 0
+                    for file in plan.files {
                         try Task.checkCancellation()
                         let base = done
                         let throttle = ProgressThrottle()
@@ -111,34 +113,45 @@ final class TransferManager {
         }
     }
 
-    struct LocalFile {
+    struct LocalFile: Sendable {
         let url: URL
         let key: String
         let size: Int64
         let contentType: String?
     }
 
-    nonisolated static func enumerateFiles(at url: URL, keyPrefix: String) -> [LocalFile] {
-        func entry(_ file: URL, key: String) -> LocalFile? {
-            let values = try? file.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey, .contentTypeKey])
-            guard values?.isRegularFile == true else { return nil }
-            return LocalFile(url: file, key: key, size: Int64(values?.fileSize ?? 0), contentType: values?.contentType?.preferredMIMEType)
+    struct UploadPlan: Sendable {
+        var files: [LocalFile] = []
+        /// Folder keys (ending in `/`) for directories with nothing in them, so they survive the upload.
+        var emptyFolders: [String] = []
+    }
+
+    nonisolated static func plan(for url: URL, keyPrefix: String) -> UploadPlan {
+        let keys: [URLResourceKey] = [.isRegularFileKey, .isDirectoryKey, .fileSizeKey, .contentTypeKey]
+        var plan = UploadPlan()
+
+        func add(_ item: URL, key: String) {
+            guard let values = try? item.resourceValues(forKeys: Set(keys)) else { return }
+            if values.isDirectory == true {
+                let children = (try? FileManager.default.contentsOfDirectory(at: item, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles])) ?? []
+                if children.isEmpty { plan.emptyFolders.append(key + "/") }
+            } else if values.isRegularFile == true {
+                plan.files.append(LocalFile(url: item, key: key, size: Int64(values.fileSize ?? 0), contentType: values.contentType?.preferredMIMEType))
+            }
         }
 
-        guard isDirectory(url) else {
-            return entry(url, key: keyPrefix + url.lastPathComponent).map { [$0] } ?? []
-        }
+        let rootKey = keyPrefix + url.lastPathComponent
+        add(url, key: rootKey)
+        guard isDirectory(url) else { return plan }
+
         let root = url.standardizedFileURL.path
-        let base = keyPrefix + url.lastPathComponent + "/"
-        let enumerator = FileManager.default.enumerator(at: url, includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey, .contentTypeKey], options: [.skipsHiddenFiles])
-        var files: [LocalFile] = []
-        while let file = enumerator?.nextObject() as? URL {
-            let path = file.standardizedFileURL.path
+        let enumerator = FileManager.default.enumerator(at: url, includingPropertiesForKeys: keys, options: [.skipsHiddenFiles])
+        while let item = enumerator?.nextObject() as? URL {
+            let path = item.standardizedFileURL.path
             guard path.hasPrefix(root + "/") else { continue }
-            let relative = String(path.dropFirst(root.count + 1))
-            if let item = entry(file, key: base + relative) { files.append(item) }
+            add(item, key: rootKey + "/" + path.dropFirst(root.count + 1))
         }
-        return files
+        return plan
     }
 
     nonisolated static func isDirectory(_ url: URL) -> Bool {

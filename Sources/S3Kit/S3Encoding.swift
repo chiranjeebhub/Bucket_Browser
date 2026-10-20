@@ -31,10 +31,10 @@ public enum S3Encoding {
 
 /// Helpers for treating `/`-delimited keys as a folder hierarchy.
 public enum S3Path {
-    /// The last path component of a key or prefix, without a trailing slash.
+    /// The last path component of a key or prefix, without its trailing slash.
+    /// Empty components are kept, so the folder `a//` is named `""`.
     public static func name(of key: String) -> String {
-        var trimmed = Substring(key)
-        while trimmed.hasSuffix("/") { trimmed = trimmed.dropLast() }
+        let trimmed = key.hasSuffix("/") ? key.dropLast() : Substring(key)
         if let slash = trimmed.lastIndex(of: "/") {
             return String(trimmed[trimmed.index(after: slash)...])
         }
@@ -43,20 +43,18 @@ public enum S3Path {
 
     /// The prefix that contains `key`, ending in `/`, or `""` at the bucket root.
     public static func parent(of key: String) -> String {
-        var trimmed = Substring(key)
-        while trimmed.hasSuffix("/") { trimmed = trimmed.dropLast() }
+        let trimmed = key.hasSuffix("/") ? key.dropLast() : Substring(key)
         guard let slash = trimmed.lastIndex(of: "/") else { return "" }
         return String(trimmed[...slash])
     }
 
     /// Every ancestor prefix from the root down to and including `prefix`.
-    /// `"a/b/"` gives `["", "a/", "a/b/"]`.
+    /// `"a/b/"` gives `["", "a/", "a/b/"]`; empty components are kept, so `"a//"`
+    /// gives `["", "a/", "a//"]`.
     public static func ancestors(of prefix: String) -> [String] {
         var result = [""]
-        var current = ""
-        for part in prefix.split(separator: "/") {
-            current += part + "/"
-            result.append(current)
+        for index in prefix.indices where prefix[index] == "/" {
+            result.append(String(prefix[...index]))
         }
         return result
     }
