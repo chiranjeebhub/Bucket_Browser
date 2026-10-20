@@ -6,6 +6,7 @@ struct BucketBrowserApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var accounts = AccountStore()
     @State private var transfers = TransferManager()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup("Bucket Browser") {
@@ -14,6 +15,9 @@ struct BucketBrowserApp: App {
                 .environment(transfers)
         }
         .defaultSize(width: 1100, height: 680)
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { accounts.reloadFromICloud() }
+        }
         .commands {
             SidebarCommands()
             ToolbarCommands()

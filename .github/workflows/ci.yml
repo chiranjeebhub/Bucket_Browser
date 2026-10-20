@@ -24,10 +24,54 @@ jobs:
       - name: Test
         run: swift test
 
+      # Signing is optional: without these secrets the app is ad-hoc signed and iCloud sync is off.
+      - name: Import signing certificate
+        id: signing
+        env:
+          CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          PROVISIONING_PROFILE: ${{ secrets.MACOS_PROVISIONING_PROFILE }}
+        run: |
+          if [[ -z "$CERTIFICATE_P12" || -z "$PROVISIONING_PROFILE" ]]; then
+            echo "No signing secrets; building an ad-hoc signed app."
+            exit 0
+          fi
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+          echo "$CERTIFICATE_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          echo "$PROVISIONING_PROFILE" | base64 --decode > "$RUNNER_TEMP/app.provisionprofile"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 3600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+          IDENTITY="$(security find-identity -v -p codesigning "$KEYCHAIN" | grep 'Developer ID Application' | head -1 | sed -E 's/.*"(.+)"/\1/')"
+          echo "identity=$IDENTITY" >> "$GITHUB_OUTPUT"
+          echo "profile=$RUNNER_TEMP/app.provisionprofile" >> "$GITHUB_OUTPUT"
+
       - name: Build app bundle
+        env:
+          SIGN_IDENTITY: ${{ steps.signing.outputs.identity }}
+          PROVISIONING_PROFILE: ${{ steps.signing.outputs.profile }}
         run: |
           UNIVERSAL=1 scripts/build-app.sh release
           cd build && ditto -c -k --keepParent "Bucket Browser.app" BucketBrowser.zip
+
+      - name: Notarize
+        if: steps.signing.outputs.identity != ''
+        env:
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
+        run: |
+          if [[ -z "$NOTARY_APPLE_ID" || -z "$NOTARY_PASSWORD" ]]; then
+            echo "No notarization secrets; skipping."
+            exit 0
+          fi
+          xcrun notarytool submit build/BucketBrowser.zip --wait \
+            --apple-id "$NOTARY_APPLE_ID" --password "$NOTARY_PASSWORD" --team-id 4TK5PNR392
+          xcrun stapler staple "build/Bucket Browser.app"
+          cd build && rm BucketBrowser.zip && ditto -c -k --keepParent "Bucket Browser.app" BucketBrowser.zip
 
       - uses: actions/upload-artifact@v4
         with:

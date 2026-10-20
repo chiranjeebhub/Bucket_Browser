@@ -33,9 +33,37 @@ final class AccountStore {
             for (id, buckets) in DemoMode.buckets { bucketStates[id] = .loaded(buckets) }
             return
         }
-        if let data = UserDefaults.standard.data(forKey: defaultsKey),
-           let saved = try? JSONDecoder().decode([Account].self, from: data) {
-            accounts = saved
+        if let synced = KeychainStore.loadAccountList() {
+            accounts = synced
+            saveToDefaults()
+        } else {
+            if let data = UserDefaults.standard.data(forKey: defaultsKey),
+               let saved = try? JSONDecoder().decode([Account].self, from: data) {
+                accounts = saved
+            }
+            // First launch of a build that can sync: upload the accounts this Mac already has.
+            if !accounts.isEmpty { KeychainStore.saveAccountList(accounts) }
+        }
+    }
+
+    /// Whether accounts and keys sync through iCloud Keychain in this build.
+    var isSyncingWithICloud: Bool { !DemoMode.isEnabled && KeychainStore.isSyncAvailable }
+
+    /// Picks up accounts added, edited or removed on another Mac. Called when the app becomes active.
+    func reloadFromICloud() {
+        guard isSyncingWithICloud, let synced = KeychainStore.loadAccountList(), synced != accounts else { return }
+        let previous = Dictionary(uniqueKeysWithValues: accounts.map { ($0.id, $0) })
+        accounts = synced
+        saveToDefaults()
+        let current = Set(synced.map(\.id))
+        for id in previous.keys where !current.contains(id) {
+            bucketStates[id] = nil
+            clients[id] = nil
+        }
+        for account in synced where previous[account.id] != account {
+            // New or changed elsewhere: its keys may have changed too.
+            clients[account.id] = nil
+            if previous[account.id] != nil { refreshBuckets(for: account.id) }
         }
     }
 
@@ -120,6 +148,11 @@ final class AccountStore {
 
     private func persist() {
         guard !DemoMode.isEnabled else { return }
+        saveToDefaults()
+        KeychainStore.saveAccountList(accounts)
+    }
+
+    private func saveToDefaults() {
         if let data = try? JSONEncoder().encode(accounts) {
             UserDefaults.standard.set(data, forKey: defaultsKey)
         }

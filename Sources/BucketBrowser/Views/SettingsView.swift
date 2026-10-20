@@ -6,6 +6,12 @@ struct SettingsView: View {
     @State private var selection: UUID?
     @State private var editor: AccountEditorTarget?
 
+    private var syncStatus: String {
+        accounts.isSyncingWithICloud
+            ? "Accounts and keys sync to your other Macs with iCloud Keychain."
+            : "iCloud sync is off because this copy of the app isn’t signed with a developer certificate."
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             List(selection: $selection) {
@@ -46,8 +52,14 @@ struct SettingsView: View {
             }
             .buttonStyle(.borderless)
             .padding(8)
+
+            Divider()
+            Label(syncStatus, systemImage: accounts.isSyncingWithICloud ? "checkmark.icloud" : "icloud.slash")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .padding(8)
         }
-        .frame(width: 480, height: 320)
+        .frame(width: 480, height: 350)
         .sheet(item: $editor) { target in
             AccountEditorView(target: target)
                 .environment(accounts)
