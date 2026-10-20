@@ -17,8 +17,27 @@ struct BrowserWindow: View {
             }
         }
         .onAppear {
-            if model == nil { model = BrowserModel(accounts: accounts, transfers: transfers) }
+            guard model == nil else { return }
+            let newModel = BrowserModel(accounts: accounts, transfers: transfers)
+            if DemoMode.isEnabled { Self.applyDemoSettings(to: newModel) }
+            model = newModel
         }
+    }
+
+    /// Opens the folder, view and selection that the demo environment variables ask for.
+    private static func applyDemoSettings(to model: BrowserModel) {
+        if let viewMode = DemoMode.viewMode { model.viewMode = viewMode }
+        let owner = DemoMode.buckets.first { entry in
+            entry.value.contains { bucket in bucket.name == DemoMode.bucket }
+        }
+        let accountID = owner?.key ?? DemoMode.r2AccountID
+        model.select(accountID: accountID, bucket: DemoMode.bucket)
+        if !DemoMode.prefix.isEmpty { model.goTo(prefix: DemoMode.prefix) }
+        if let name = DemoMode.selectedName,
+           let item = model.currentItems.first(where: { $0.name == name }) {
+            model.selection = [item.id]
+        }
+        model.showInspector = DemoMode.showsInspector
     }
 }
 

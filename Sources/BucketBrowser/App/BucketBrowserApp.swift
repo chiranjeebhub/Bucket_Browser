@@ -31,6 +31,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Needed when launched with `swift run`, which starts the binary outside an app bundle.
         NSApp.setActivationPolicy(.regular)
+        if let appearance = DemoMode.appearance { NSApp.appearance = appearance }
         NSApp.activate(ignoringOtherApps: true)
     }
 

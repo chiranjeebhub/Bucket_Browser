@@ -28,6 +28,11 @@ final class AccountStore {
     @ObservationIgnored private let defaultsKey = "accounts.v1"
 
     init() {
+        if DemoMode.isEnabled {
+            accounts = DemoMode.accounts
+            for (id, buckets) in DemoMode.buckets { bucketStates[id] = .loaded(buckets) }
+            return
+        }
         if let data = UserDefaults.standard.data(forKey: defaultsKey),
            let saved = try? JSONDecoder().decode([Account].self, from: data) {
             accounts = saved
@@ -93,6 +98,10 @@ final class AccountStore {
 
     func refreshBuckets(for accountID: UUID) {
         guard let account = self.account(id: accountID) else { return }
+        if DemoMode.isEnabled {
+            bucketStates[accountID] = .loaded(DemoMode.buckets[accountID] ?? [])
+            return
+        }
         bucketStates[accountID] = .loading
         let pinned = account.pinnedBuckets.map { S3Bucket(name: $0) }
         Task {
@@ -110,6 +119,7 @@ final class AccountStore {
     }
 
     private func persist() {
+        guard !DemoMode.isEnabled else { return }
         if let data = try? JSONEncoder().encode(accounts) {
             UserDefaults.standard.set(data, forKey: defaultsKey)
         }
