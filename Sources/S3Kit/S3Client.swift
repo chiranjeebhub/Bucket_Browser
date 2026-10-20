@@ -124,8 +124,7 @@ public final class S3Client: @unchecked Sendable {
 
     /// Uploads a local file, switching to a multipart upload for large files.
     public func uploadFile(_ fileURL: URL, bucket: String, key: String, contentType: String? = nil, progress: TransferProgress? = nil) async throws {
-        let attributes = try FileManager.default.attributesOfItem(atPath: fileURL.path)
-        let size = (attributes[.size] as? NSNumber)?.int64Value ?? 0
+        let size = Int64(try fileURL.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0)
         if size > multipartThreshold {
             try await multipartUpload(fileURL, size: size, bucket: bucket, key: key, contentType: contentType, progress: progress)
             return
