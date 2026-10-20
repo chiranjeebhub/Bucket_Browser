@@ -2,6 +2,12 @@
 # Builds "Bucket Browser.app" from the Swift package and signs it.
 # Usage: scripts/build-app.sh [debug|release]   (default: release)
 #
+# The app runs in the App Sandbox (Resources/BucketBrowser.entitlements), as the Mac App Store
+# requires. For an App Store build, see scripts/export-app.sh.
+#
+# VERSION is the marketing version (default 1.0.0). BUILD_NUMBER defaults to the commit count,
+# so every build of a later commit has a higher number, which App Store Connect requires.
+#
 # By default the app is ad-hoc signed, which can't use iCloud Keychain. To build a copy
 # that syncs accounts through iCloud, sign it with your team's Developer ID:
 #   SIGN_IDENTITY="Developer ID Application: Your Name (4TK5PNR392)" \
@@ -15,35 +21,45 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 APP_NAME="Bucket Browser"
 BUNDLE_ID="com.bucketbrowser.app"
 TEAM_ID="${TEAM_ID:-4TK5PNR392}"
-VERSION="${VERSION:-0.1.0}"
-BUILD_NUMBER="${BUILD_NUMBER:-1}"
+VERSION="${VERSION:-1.0.0}"
+BUILD_NUMBER="${BUILD_NUMBER:-$(git -C "$ROOT" rev-list --count HEAD 2>/dev/null || echo 1)}"
+COPYRIGHT="${COPYRIGHT:-Copyright © $(date +%Y) Chiranjeeb Jena. All rights reserved.}"
 OUT="$ROOT/build"
 APP="$OUT/$APP_NAME.app"
 
 cd "$ROOT"
-ARCH_FLAGS=()
+BUILD_FLAGS=()
 if [[ "${UNIVERSAL:-0}" == "1" ]]; then
-  ARCH_FLAGS=(--arch arm64 --arch x86_64)
+  BUILD_FLAGS=(--arch arm64 --arch x86_64)
 fi
+# SwiftPM records the deployment target as the SDK version in the binary, and App Store Connect
+# rejects apps that look built with an old SDK, so pass the real SDK version to the linker.
+SDK_VERSION="$(xcrun --sdk macosx --show-sdk-version)"
+BUILD_FLAGS+=(-Xlinker -platform_version -Xlinker macos -Xlinker 14.0 -Xlinker "$SDK_VERSION")
 # The ${a[@]+...} form keeps bash 3.2 (the macOS default) happy with an empty array under `set -u`.
-swift build -c "$CONFIG" ${ARCH_FLAGS[@]+"${ARCH_FLAGS[@]}"}
-BIN_DIR="$(swift build -c "$CONFIG" ${ARCH_FLAGS[@]+"${ARCH_FLAGS[@]}"} --show-bin-path)"
+swift build -c "$CONFIG" ${BUILD_FLAGS[@]+"${BUILD_FLAGS[@]}"}
+BIN_DIR="$(swift build -c "$CONFIG" ${BUILD_FLAGS[@]+"${BUILD_FLAGS[@]}"} --show-bin-path)"
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN_DIR/BucketBrowser" "$APP/Contents/MacOS/BucketBrowser"
 
-# App icon: Resources/AppIcon.png (1024x1024, from scripts/render-icon.py) -> AppIcon.icns
-ICONSET="$OUT/AppIcon.iconset"
-rm -rf "$ICONSET"
-mkdir -p "$ICONSET"
-for size in 16 32 128 256 512; do
-  sips -z "$size" "$size" "$ROOT/Resources/AppIcon.png" --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
-  double=$((size * 2))
-  sips -z "$double" "$double" "$ROOT/Resources/AppIcon.png" --out "$ICONSET/icon_${size}x${size}@2x.png" >/dev/null
-done
-iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
-rm -rf "$ICONSET"
+# App icon: the asset catalog (from scripts/render-icon.py) compiles to Assets.car and AppIcon.icns.
+xcrun actool "$ROOT/Resources/Assets.xcassets" --compile "$APP/Contents/Resources" \
+  --platform macosx --target-device mac --minimum-deployment-target 14.0 \
+  --app-icon AppIcon --output-partial-info-plist "$OUT/assets-info.plist" \
+  --errors --warnings --output-format human-readable-text >/dev/null
+
+# Required-reason API declarations for App Store review.
+cp "$ROOT/Resources/PrivacyInfo.xcprivacy" "$APP/Contents/Resources/PrivacyInfo.xcprivacy"
+
+# The toolchain keys Xcode writes into every app. App Store Connect reads them to check that
+# the app was built with a supported Xcode and SDK.
+XCODE_VERSION="$(xcodebuild -version | awk 'NR == 1 { print $2 }')"
+IFS=. read -r XCODE_MAJOR XCODE_MINOR XCODE_PATCH <<< "$XCODE_VERSION"
+DT_XCODE="$(printf '%d%d%d' "$XCODE_MAJOR" "${XCODE_MINOR:-0}" "${XCODE_PATCH:-0}")"
+DT_XCODE_BUILD="$(xcodebuild -version | awk 'NR == 2 { print $3 }')"
+SDK_BUILD="$(xcrun --sdk macosx --show-sdk-build-version)"
 
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -58,17 +74,35 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleShortVersionString</key><string>$VERSION</string>
   <key>CFBundleVersion</key><string>$BUILD_NUMBER</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
+  <key>CFBundleIconName</key><string>AppIcon</string>
+  <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+  <key>CFBundleDevelopmentRegion</key><string>en</string>
+  <key>CFBundleSupportedPlatforms</key><array><string>MacOSX</string></array>
+  <key>NSHumanReadableCopyright</key><string>$COPYRIGHT</string>
   <key>LSMinimumSystemVersion</key><string>14.0</string>
   <key>LSApplicationCategoryType</key><string>public.app-category.developer-tools</string>
+  <key>ITSAppUsesNonExemptEncryption</key><false/>
   <key>NSHighResolutionCapable</key><true/>
   <key>NSPrincipalClass</key><string>NSApplication</string>
   <key>NSSupportsAutomaticTermination</key><false/>
+  <key>BuildMachineOSBuild</key><string>$(sw_vers -buildVersion)</string>
+  <key>DTCompiler</key><string>com.apple.compilers.llvm.clang.1_0</string>
+  <key>DTPlatformName</key><string>macosx</string>
+  <key>DTPlatformVersion</key><string>$SDK_VERSION</string>
+  <key>DTPlatformBuild</key><string>$SDK_BUILD</string>
+  <key>DTSDKName</key><string>macosx$SDK_VERSION</string>
+  <key>DTSDKBuild</key><string>$SDK_BUILD</string>
+  <key>DTXcode</key><string>$DT_XCODE</string>
+  <key>DTXcodeBuild</key><string>$DT_XCODE_BUILD</string>
 </dict>
 </plist>
 PLIST
 
+ENTITLEMENTS="$OUT/BucketBrowser.entitlements"
+cp "$ROOT/Resources/BucketBrowser.entitlements" "$ENTITLEMENTS"
+
 if [[ -z "${SIGN_IDENTITY:-}" ]]; then
-  codesign --force --deep --sign - "$APP"
+  codesign --force --deep --entitlements "$ENTITLEMENTS" --sign - "$APP"
   echo "Built $APP (ad-hoc signed; iCloud sync is off)"
   exit 0
 fi
@@ -81,19 +115,7 @@ if [[ -z "${PROVISIONING_PROFILE:-}" ]]; then
 fi
 cp "$PROVISIONING_PROFILE" "$APP/Contents/embedded.provisionprofile"
 
-ENTITLEMENTS="$OUT/BucketBrowser.entitlements"
-cat > "$ENTITLEMENTS" <<PLIST
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>com.apple.application-identifier</key><string>$TEAM_ID.$BUNDLE_ID</string>
-  <key>com.apple.developer.team-identifier</key><string>$TEAM_ID</string>
-  <key>keychain-access-groups</key>
-  <array><string>$TEAM_ID.$BUNDLE_ID</string></array>
-</dict>
-</plist>
-PLIST
+"$ROOT/scripts/add-team-entitlements.sh" "$ENTITLEMENTS" "$TEAM_ID" "$BUNDLE_ID"
 
 codesign --force --options runtime --timestamp \
   --entitlements "$ENTITLEMENTS" --sign "$SIGN_IDENTITY" "$APP"

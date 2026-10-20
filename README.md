@@ -24,6 +24,7 @@ Before you add an account, the window shows a welcome screen with a card for eac
 - **Shareable links:** copy a presigned URL that expires in an hour, a day or seven days, or copy the `s3://` URI.
 - **Transfers popover** with progress, cancel and Show in Finder. Large files upload in parallel multipart chunks.
 - **Credentials live in the Keychain.** Account settings (names, regions, endpoints) go in user defaults; access keys never do.
+- **Private by design.** No analytics, no tracking, and no servers of ours: the app only talks to the storage endpoints you add. See the [privacy policy](docs/privacy.md).
 - **iCloud sync.** In a build signed with a Developer ID, accounts and keys sync through iCloud Keychain, so they come back after a reinstall and show up on your other Macs.
 
 ## Requirements
@@ -65,7 +66,7 @@ Apple only lets apps signed by a developer team use iCloud Keychain. Ad-hoc sign
 If Xcode manages your Developer ID certificate in the cloud, its private key isn't in your keychain and `SIGN_IDENTITY` won't work. Sign through Xcode instead. Run `scripts/build-app.sh`, then:
 
 ```sh
-DEV_PROFILE=path/to/development.provisionprofile scripts/export-developer-id.sh
+DEV_PROFILE=path/to/development.provisionprofile scripts/export-app.sh
 ```
 
 `DEV_PROFILE` is a Mac development profile for your team that covers `com.bucketbrowser.app`, such as the "Mac Team Provisioning Profile: *" that Xcode keeps in `~/Library/Developer/Xcode/UserData/Provisioning Profiles`. The script wraps the app in an archive and has `xcodebuild -exportArchive` sign it with Developer ID through the account you're signed in to in Xcode. The signed app is written to `build/export/Bucket Browser.app`.
@@ -73,6 +74,23 @@ DEV_PROFILE=path/to/development.provisionprofile scripts/export-developer-id.sh
 CI signs the app the same way when these repository secrets are set: `MACOS_CERTIFICATE_P12` (the certificate exported as .p12, base64 encoded), `MACOS_CERTIFICATE_PASSWORD`, and `MACOS_PROVISIONING_PROFILE` (base64 encoded). Add `NOTARY_APPLE_ID` and `NOTARY_PASSWORD` (an app-specific password) to have it notarized too.
 
 The first time a signed build runs, it moves any accounts saved by an unsigned build into iCloud Keychain. Make sure iCloud Keychain is on in System Settings › Apple Account › iCloud › Passwords & Keychain.
+
+## Mac App Store
+
+The app runs in the App Sandbox with three entitlements, listed in `Resources/BucketBrowser.entitlements`: outgoing network connections, and read-write access to files and folders the user picks in an open panel or drops on the window. Every app bundle the scripts build is sandboxed, so what you test locally behaves like the App Store copy. (`swift run` isn't sandboxed.) The bundle also carries a privacy manifest (`Resources/PrivacyInfo.xcprivacy`) that declares no tracking and no collected data.
+
+To build an App Store package, with Xcode signed in to an account on the team:
+
+```sh
+UNIVERSAL=1 scripts/build-app.sh
+DEV_PROFILE=path/to/development.provisionprofile scripts/export-app.sh app-store
+```
+
+This writes `build/export/Bucket Browser.pkg`, signed for the App Store through Xcode's cloud-managed distribution certificates. Upload it with Transporter, or run the export with `UPLOAD=1` to have Xcode upload it to App Store Connect directly. The app record must exist in App Store Connect first.
+
+`VERSION` sets the marketing version (1.0.0 by default). The build number defaults to the number of commits on the branch, so each upload from a newer commit gets a higher number, as App Store Connect requires. Set `BUILD_NUMBER` to override it.
+
+The App Store copy uses the same keychain access group as the Developer ID copy, so accounts saved by either one sync through iCloud Keychain to the other.
 
 ## Adding an account
 
@@ -104,7 +122,7 @@ BUCKET_BROWSER_DEMO=1 swift run BucketBrowser
 
 ## App icon
 
-The icon's source is `Resources/AppIcon.svg`. To regenerate `Resources/AppIcon.png`, run `python3 scripts/render-icon.py` (it needs `cairosvg` and `Pillow`). `scripts/build-app.sh` turns the PNG into `AppIcon.icns`.
+The icon's source is `Resources/AppIcon.svg`. To regenerate `Resources/AppIcon.png` and the ten sizes in `Resources/Assets.xcassets/AppIcon.appiconset`, run `python3 scripts/render-icon.py` (it needs `cairosvg` and `Pillow`). `scripts/build-app.sh` compiles the asset catalog with `actool` into `Assets.car` and `AppIcon.icns`.
 
 ## Tests
 

@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Renders Resources/AppIcon.svg to Resources/AppIcon.png (1024x1024) with soft drop shadows.
+"""Renders Resources/AppIcon.svg to Resources/AppIcon.png (1024x1024) with soft drop shadows,
+and writes every size the Mac app icon set needs to Resources/Assets.xcassets/AppIcon.appiconset.
 
 Needs cairosvg and Pillow: pip install cairosvg pillow
 """
 import io
+import json
 import re
 import sys
 from pathlib import Path
@@ -50,3 +52,18 @@ icon.putalpha(Image.composite(icon.getchannel("A"), Image.new("L", icon.size, 0)
 out = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "Resources" / "AppIcon.png"
 icon.save(out)
 print(f"Wrote {out}")
+
+# The icon set scripts/build-app.sh compiles with actool: 16 to 512 points, at 1x and 2x.
+ICONSET = ROOT / "Resources" / "Assets.xcassets" / "AppIcon.appiconset"
+ICONSET.mkdir(parents=True, exist_ok=True)
+images = []
+for points in (16, 32, 128, 256, 512):
+    for scale in (1, 2):
+        name = f"icon_{points}x{points}{'@2x' if scale == 2 else ''}.png"
+        pixels = points * scale
+        icon.resize((pixels, pixels), Image.LANCZOS).save(ICONSET / name)
+        images.append({"filename": name, "idiom": "mac", "scale": f"{scale}x", "size": f"{points}x{points}"})
+contents = {"images": images, "info": {"author": "xcode", "version": 1}}
+(ICONSET / "Contents.json").write_text(json.dumps(contents, indent=2) + "\n")
+(ICONSET.parent / "Contents.json").write_text(json.dumps({"info": {"author": "xcode", "version": 1}}, indent=2) + "\n")
+print(f"Wrote {ICONSET}")
