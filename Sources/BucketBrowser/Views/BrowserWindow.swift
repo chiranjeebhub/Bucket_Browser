@@ -54,7 +54,18 @@ struct BrowserView: View {
             SidebarView(model: model, accountEditor: $accountEditor)
                 .navigationSplitViewColumnWidth(min: 180, ideal: 220, max: 340)
         } detail: {
+            // The toolbar, search field and inspector belong to the detail column. Attached to the
+            // split view instead, macOS 26 lays the toolbar out in the collapsed inspector's space
+            // and pushes every button into the overflow menu.
             DetailView(model: model, accountEditor: $accountEditor)
+                .toolbar {
+                    BrowserToolbar(model: model, showTransfers: $showTransfers, transfers: transfers)
+                }
+                .searchable(text: $model.searchText, placement: .toolbar, prompt: "Search this folder")
+                .inspector(isPresented: $model.showInspector) {
+                    InspectorView(model: model)
+                        .inspectorColumnWidth(min: 240, ideal: 290, max: 420)
+                }
         }
         // With no accounts the sidebar and toolbar have nothing to show, so the window is just the welcome screen.
         .toolbar(accounts.accounts.isEmpty ? .hidden : .visible, for: .windowToolbar)
@@ -64,14 +75,6 @@ struct BrowserView: View {
         }
         .navigationTitle(model.title)
         .navigationSubtitle(subtitle)
-        .toolbar {
-            BrowserToolbar(model: model, showTransfers: $showTransfers, transfers: transfers)
-        }
-        .searchable(text: $model.searchText, placement: .toolbar, prompt: "Search this folder")
-        .inspector(isPresented: $model.showInspector) {
-            InspectorView(model: model)
-                .inspectorColumnWidth(min: 240, ideal: 290, max: 420)
-        }
         .quickLookPreview($model.quickLookURL)
         .focusedSceneValue(\.browserModel, model)
         .sheet(item: $accountEditor) { target in

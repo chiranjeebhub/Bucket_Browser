@@ -6,7 +6,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 APP_BIN="$ROOT/build/Bucket Browser.app/Contents/MacOS/BucketBrowser"
-OUT="$ROOT/docs/screenshots"
+OUT="$ROOT/${SCREENSHOT_DIR:-docs/screenshots}"
 WINDOW_ID="$ROOT/build/window-id"
 mkdir -p "$OUT"
 
