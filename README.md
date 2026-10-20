@@ -8,6 +8,10 @@ A native macOS app for browsing Amazon S3 and Cloudflare R2 buckets the way you 
 | --- | --- |
 | ![Icon view](docs/screenshots/icon-view.png) | ![Column view](docs/screenshots/column-view.png) |
 
+Before you add an account, the window shows a welcome screen with a card for each service:
+
+![Welcome screen](docs/screenshots/welcome.png)
+
 ## Features
 
 - **Sidebar of accounts and buckets.** Add as many AWS, R2 or other S3-compatible accounts as you like; each shows its buckets like Finder's Locations.
