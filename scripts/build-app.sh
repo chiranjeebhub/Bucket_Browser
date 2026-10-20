@@ -28,13 +28,17 @@ OUT="$ROOT/build"
 APP="$OUT/$APP_NAME.app"
 
 cd "$ROOT"
-ARCH_FLAGS=()
+BUILD_FLAGS=()
 if [[ "${UNIVERSAL:-0}" == "1" ]]; then
-  ARCH_FLAGS=(--arch arm64 --arch x86_64)
+  BUILD_FLAGS=(--arch arm64 --arch x86_64)
 fi
+# SwiftPM records the deployment target as the SDK version in the binary, and App Store Connect
+# rejects apps that look built with an old SDK, so pass the real SDK version to the linker.
+SDK_VERSION="$(xcrun --sdk macosx --show-sdk-version)"
+BUILD_FLAGS+=(-Xlinker -platform_version -Xlinker macos -Xlinker 14.0 -Xlinker "$SDK_VERSION")
 # The ${a[@]+...} form keeps bash 3.2 (the macOS default) happy with an empty array under `set -u`.
-swift build -c "$CONFIG" ${ARCH_FLAGS[@]+"${ARCH_FLAGS[@]}"}
-BIN_DIR="$(swift build -c "$CONFIG" ${ARCH_FLAGS[@]+"${ARCH_FLAGS[@]}"} --show-bin-path)"
+swift build -c "$CONFIG" ${BUILD_FLAGS[@]+"${BUILD_FLAGS[@]}"}
+BIN_DIR="$(swift build -c "$CONFIG" ${BUILD_FLAGS[@]+"${BUILD_FLAGS[@]}"} --show-bin-path)"
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
@@ -55,7 +59,6 @@ XCODE_VERSION="$(xcodebuild -version | awk 'NR == 1 { print $2 }')"
 IFS=. read -r XCODE_MAJOR XCODE_MINOR XCODE_PATCH <<< "$XCODE_VERSION"
 DT_XCODE="$(printf '%d%d%d' "$XCODE_MAJOR" "${XCODE_MINOR:-0}" "${XCODE_PATCH:-0}")"
 DT_XCODE_BUILD="$(xcodebuild -version | awk 'NR == 2 { print $3 }')"
-SDK_VERSION="$(xcrun --sdk macosx --show-sdk-version)"
 SDK_BUILD="$(xcrun --sdk macosx --show-sdk-build-version)"
 
 cat > "$APP/Contents/Info.plist" <<PLIST
