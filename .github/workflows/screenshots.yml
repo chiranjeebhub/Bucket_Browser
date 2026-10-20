@@ -1,7 +1,9 @@
 name: Screenshots
 
-# Renders the app in demo mode on a macOS runner and commits the screenshots
-# to docs/screenshots on the same branch.
+# Renders the app in demo mode on a macOS runner and uploads the screenshots as
+# an artifact. Run it by hand (Actions > Screenshots > Run workflow) to also
+# commit them to docs/screenshots on the chosen branch. Pushes only upload the
+# artifact, so bot commits never become a pull request's head.
 on:
   workflow_dispatch:
   push:
@@ -29,6 +31,7 @@ jobs:
           path: docs/screenshots
 
       - name: Commit screenshots
+        if: github.event_name == 'workflow_dispatch'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
