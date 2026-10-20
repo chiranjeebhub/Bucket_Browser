@@ -40,7 +40,7 @@ folder = layer("folder")
 cloud = layer("cloud", "arrows")
 
 icon = tile
-icon = Image.alpha_composite(icon, shadow(folder, 16, 18, 0.45))
+icon = Image.alpha_composite(icon, shadow(folder, 16, 18, 0.30))
 icon = Image.alpha_composite(icon, folder)
 icon = Image.alpha_composite(icon, shadow(layer("cloud"), 8, 10, 0.35, (11, 79, 138)))
 icon = Image.alpha_composite(icon, cloud)

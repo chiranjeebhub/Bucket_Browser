@@ -3,8 +3,8 @@
        upload/download arrows. scripts/render-icon.py adds the drop shadows. -->
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#2E3F70"/>
-      <stop offset="1" stop-color="#111831"/>
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#E6EBF2"/>
     </linearGradient>
     <linearGradient id="back" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#4FA9EE"/>
@@ -26,7 +26,7 @@
 
   <g id="tile">
     <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)"/>
-    <rect x="102" y="102" width="820" height="820" rx="183" fill="none" stroke="#FFFFFF" stroke-opacity="0.10" stroke-width="4"/>
+    <rect x="102" y="102" width="820" height="820" rx="183" fill="none" stroke="#000000" stroke-opacity="0.08" stroke-width="4"/>
   </g>
 
   <g id="folder">
