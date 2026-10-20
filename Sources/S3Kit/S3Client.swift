@@ -299,6 +299,7 @@ public final class S3Client: @unchecked Sendable {
     func makeURL(bucket: String?, key: String?, query: [(String, String?)], region: String, forcePathStyle: Bool) throws -> URL {
         var components = URLComponents()
         var basePath = ""
+        let bucketAllowsVirtualHost = bucket.map(Self.isVirtualHostCompatible) ?? false
         let host: String
         let virtualHosted: Bool
 
@@ -306,14 +307,14 @@ public final class S3Client: @unchecked Sendable {
         case .aws:
             let regional = "s3.\(region).amazonaws.com"
             // Dotted bucket names do not match the wildcard TLS certificate, so they use path style.
-            virtualHosted = !forcePathStyle && bucket.map(Self.isVirtualHostCompatible) ?? false
+            virtualHosted = !forcePathStyle && bucketAllowsVirtualHost
             host = virtualHosted ? "\(bucket!).\(regional)" : regional
             components.scheme = "https"
         case .r2, .custom:
             guard let endpoint = configuration.endpoint, let endpointHost = endpoint.host else {
                 throw S3Error.invalidConfiguration("This account has no endpoint URL.")
             }
-            virtualHosted = !forcePathStyle && !configuration.usePathStyle && bucket.map(Self.isVirtualHostCompatible) ?? false
+            virtualHosted = !forcePathStyle && !configuration.usePathStyle && bucketAllowsVirtualHost
             host = virtualHosted ? "\(bucket!).\(endpointHost)" : endpointHost
             components.scheme = endpoint.scheme ?? "https"
             components.port = endpoint.port
@@ -335,7 +336,10 @@ public final class S3Client: @unchecked Sendable {
 
     static func isVirtualHostCompatible(_ bucket: String) -> Bool {
         guard (3...63).contains(bucket.count), !bucket.contains(".") else { return false }
-        return bucket.allSatisfy { $0.isLowercase || $0.isNumber || $0 == "-" } && bucket.first != "-" && bucket.last != "-"
+        guard bucket.first != "-", bucket.last != "-" else { return false }
+        return bucket.allSatisfy { character in
+            character.isLowercase || character.isNumber || character == "-"
+        }
     }
 
     static func validate(_ response: HTTPURLResponse, data: Data) throws {

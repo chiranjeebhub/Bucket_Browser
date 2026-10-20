@@ -19,11 +19,13 @@ public enum S3Encoding {
 
     /// Builds a canonical (sorted, strictly encoded) query string.
     public static func canonicalQuery(_ items: [(String, String?)]) -> String {
-        items
-            .map { (encode($0.0), encode($0.1 ?? "")) }
-            .sorted { $0.0 == $1.0 ? $0.1 < $1.1 : $0.0 < $1.0 }
-            .map { "\($0.0)=\($0.1)" }
-            .joined(separator: "&")
+        let encoded: [(name: String, value: String)] = items.map { item in
+            (name: encode(item.0), value: encode(item.1 ?? ""))
+        }
+        let sorted = encoded.sorted { lhs, rhs in
+            lhs.name == rhs.name ? lhs.value < rhs.value : lhs.name < rhs.name
+        }
+        return sorted.map { "\($0.name)=\($0.value)" }.joined(separator: "&")
     }
 }
 
