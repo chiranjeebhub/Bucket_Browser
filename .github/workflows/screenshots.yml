@@ -6,6 +6,10 @@ name: Screenshots
 # artifact, so bot commits never become a pull request's head.
 on:
   workflow_dispatch:
+    inputs:
+      runner:
+        description: macOS runner image. Images from anything but macos-15 go in docs/screenshots/<runner>.
+        default: macos-15
   push:
     branches: ['claude/**']
     paths-ignore: ['docs/screenshots/**']
@@ -15,7 +19,9 @@ permissions:
 
 jobs:
   screenshots:
-    runs-on: macos-15
+    runs-on: ${{ inputs.runner || 'macos-15' }}
+    env:
+      SCREENSHOT_DIR: ${{ (inputs.runner && inputs.runner != 'macos-15') && format('docs/screenshots/{0}', inputs.runner) || 'docs/screenshots' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -28,7 +34,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: screenshots
-          path: docs/screenshots
+          path: ${{ env.SCREENSHOT_DIR }}
 
       - name: Commit screenshots
         if: github.event_name == 'workflow_dispatch'
