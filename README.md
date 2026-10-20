@@ -58,6 +58,14 @@ Apple only lets apps signed by a developer team use iCloud Keychain. Ad-hoc sign
    scripts/build-app.sh
    ```
 
+If Xcode manages your Developer ID certificate in the cloud, its private key isn't in your keychain and `SIGN_IDENTITY` won't work. Sign through Xcode instead. Run `scripts/build-app.sh`, then:
+
+```sh
+DEV_PROFILE=path/to/development.provisionprofile scripts/export-developer-id.sh
+```
+
+`DEV_PROFILE` is a Mac development profile for your team that covers `com.bucketbrowser.app`, such as the "Mac Team Provisioning Profile: *" that Xcode keeps in `~/Library/Developer/Xcode/UserData/Provisioning Profiles`. The script wraps the app in an archive and has `xcodebuild -exportArchive` sign it with Developer ID through the account you're signed in to in Xcode. The signed app is written to `build/export/Bucket Browser.app`.
+
 CI signs the app the same way when these repository secrets are set: `MACOS_CERTIFICATE_P12` (the certificate exported as .p12, base64 encoded), `MACOS_CERTIFICATE_PASSWORD`, and `MACOS_PROVISIONING_PROFILE` (base64 encoded). Add `NOTARY_APPLE_ID` and `NOTARY_PASSWORD` (an app-specific password) to have it notarized too.
 
 The first time a signed build runs, it moves any accounts saved by an unsigned build into iCloud Keychain. Make sure iCloud Keychain is on in System Settings › Apple Account › iCloud › Passwords & Keychain.
