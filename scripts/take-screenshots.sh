@@ -40,4 +40,6 @@ shoot() {
 shoot list-view BB_DEMO_VIEW=list BB_DEMO_PREFIX=photos/2025/ BB_DEMO_SELECT=product-launch-hero.png BB_DEMO_INSPECTOR=1 BB_DEMO_APPEARANCE=light
 shoot icon-view BB_DEMO_VIEW=icons BB_DEMO_APPEARANCE=light
 shoot column-view BB_DEMO_VIEW=columns BB_DEMO_PREFIX=photos/2025/ BB_DEMO_SELECT=storefront.jpg BB_DEMO_APPEARANCE=light
+shoot welcome BB_DEMO_EMPTY=1 BB_DEMO_APPEARANCE=light
+shoot welcome-dark BB_DEMO_EMPTY=1 BB_DEMO_APPEARANCE=dark
 shoot list-view-dark BB_DEMO_VIEW=list BB_DEMO_PREFIX=videos/ BB_DEMO_APPEARANCE=dark

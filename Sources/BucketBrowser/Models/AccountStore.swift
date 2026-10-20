@@ -29,7 +29,7 @@ final class AccountStore {
 
     init() {
         if DemoMode.isEnabled {
-            accounts = DemoMode.accounts
+            accounts = DemoMode.startsEmpty ? [] : DemoMode.accounts
             for (id, buckets) in DemoMode.buckets { bucketStates[id] = .loaded(buckets) }
             return
         }

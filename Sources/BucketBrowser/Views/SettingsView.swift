@@ -38,7 +38,7 @@ struct SettingsView: View {
             }
 
             HStack(spacing: 0) {
-                Button { editor = .new } label: { Image(systemName: "plus").frame(width: 24, height: 20) }
+                Button { editor = .new(.r2) } label: { Image(systemName: "plus").frame(width: 24, height: 20) }
                 Button {
                     if let selection { accounts.remove(selection) }
                     selection = nil

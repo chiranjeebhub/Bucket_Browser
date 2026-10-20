@@ -35,7 +35,7 @@ struct SidebarView: View {
         .safeAreaInset(edge: .bottom) {
             HStack {
                 Button {
-                    accountEditor = .new
+                    accountEditor = .new(.r2)
                 } label: {
                     Label("Add Account", systemImage: "plus")
                 }
