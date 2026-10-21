@@ -14,6 +14,10 @@ Bucket Browser is a Mac app for browsing Amazon S3, Cloudflare R2 and other S3-c
 
 The app connects only to the storage endpoints of the accounts you add, such as Amazon S3 or Cloudflare R2, to list, upload, download, rename and delete your files. Those services handle your data under their own privacy policies. The app has no servers of its own and sends nothing to the developer.
 
+## Updates in the downloaded version
+
+The copy downloaded from the website (not the Mac App Store) checks for new versions, if you allow it, by fetching the release list from the website on GitHub Pages and downloading updates from GitHub. These requests reveal your IP address and the app and macOS versions to GitHub, and nothing else; the app doesn't send a system profile. It asks before it checks automatically, and **Check for Updates** in the app menu works either way.
+
 ## Analytics and tracking
 
 None. The app contains no analytics, advertising or tracking code, and it doesn't link your data to your identity.

@@ -14,6 +14,10 @@
 #   PROVISIONING_PROFILE=path/to/BucketBrowser.provisionprofile \
 #   scripts/build-app.sh
 # TEAM_ID defaults to 4TK5PNR392 and must match the certificate and the profile.
+#
+# DIRECT=1 builds the direct-download edition: the same app plus Sparkle, which updates it from
+# the appcast on the website. It builds in .build-direct so it never mixes with the App Store
+# build, which has no Sparkle code at all. scripts/release-direct.sh uses it.
 set -euo pipefail
 
 CONFIG="${1:-release}"
@@ -26,9 +30,18 @@ BUILD_NUMBER="${BUILD_NUMBER:-$(git -C "$ROOT" rev-list --count HEAD 2>/dev/null
 COPYRIGHT="${COPYRIGHT:-Copyright © $(date +%Y) Chiranjeeb Jena. All rights reserved.}"
 OUT="$ROOT/build"
 APP="$OUT/$APP_NAME.app"
+DIRECT="${DIRECT:-0}"
+FEED_URL="${FEED_URL:-https://chiranjeebhub.github.io/bucket-browser-site/appcast.xml}"
 
 cd "$ROOT"
 BUILD_FLAGS=()
+if [[ "$DIRECT" == "1" ]]; then
+  # Package.swift adds Sparkle when this is set. The public key that verifies updates is safe to
+  # commit; the private key stays in the login keychain of the Mac that signs releases.
+  export BUCKET_BROWSER_DIRECT=1
+  SPARKLE_PUBLIC_KEY="${SPARKLE_PUBLIC_KEY:-$(tr -d '[:space:]' < "$ROOT/Resources/SparklePublicKey.txt")}"
+  BUILD_FLAGS+=(--scratch-path "$ROOT/.build-direct" -Xlinker -rpath -Xlinker @executable_path/../Frameworks)
+fi
 if [[ "${UNIVERSAL:-0}" == "1" ]]; then
   BUILD_FLAGS=(--arch arm64 --arch x86_64)
 fi
@@ -43,6 +56,13 @@ BIN_DIR="$(swift build -c "$CONFIG" ${BUILD_FLAGS[@]+"${BUILD_FLAGS[@]}"} --show
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN_DIR/BucketBrowser" "$APP/Contents/MacOS/BucketBrowser"
+if [[ "$DIRECT" == "1" ]]; then
+  mkdir -p "$APP/Contents/Frameworks"
+  ditto "$BIN_DIR/Sparkle.framework" "$APP/Contents/Frameworks/Sparkle.framework"
+  # The sandbox already allows network access, so Sparkle can download in-process and doesn't
+  # need its Downloader service (which would need its own entitlements).
+  rm -rf "$APP/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Downloader.xpc"
+fi
 
 # App icon: the asset catalog (from scripts/render-icon.py) compiles to Assets.car and AppIcon.icns.
 xcrun actool "$ROOT/Resources/Assets.xcassets" --compile "$APP/Contents/Resources" \
@@ -98,11 +118,23 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
+if [[ "$DIRECT" == "1" ]]; then
+  BUDDY=/usr/libexec/PlistBuddy
+  "$BUDDY" -c "Add :SUFeedURL string $FEED_URL" "$APP/Contents/Info.plist"
+  "$BUDDY" -c "Add :SUPublicEDKey string $SPARKLE_PUBLIC_KEY" "$APP/Contents/Info.plist"
+  # A sandboxed app installs updates through Sparkle's Installer service.
+  "$BUDDY" -c "Add :SUEnableInstallerLauncherService bool true" "$APP/Contents/Info.plist"
+fi
+
 ENTITLEMENTS="$OUT/BucketBrowser.entitlements"
 cp "$ROOT/Resources/BucketBrowser.entitlements" "$ENTITLEMENTS"
+if [[ "$DIRECT" == "1" ]]; then
+  "$ROOT/scripts/add-sparkle-entitlements.sh" "$ENTITLEMENTS" "$BUNDLE_ID"
+fi
 
 if [[ -z "${SIGN_IDENTITY:-}" ]]; then
-  codesign --force --deep --entitlements "$ENTITLEMENTS" --sign - "$APP"
+  "$ROOT/scripts/sign-sparkle.sh" "$APP" -
+  codesign --force --entitlements "$ENTITLEMENTS" --sign - "$APP"
   echo "Built $APP (ad-hoc signed; iCloud sync is off)"
   exit 0
 fi
@@ -117,6 +149,7 @@ cp "$PROVISIONING_PROFILE" "$APP/Contents/embedded.provisionprofile"
 
 "$ROOT/scripts/add-team-entitlements.sh" "$ENTITLEMENTS" "$TEAM_ID" "$BUNDLE_ID"
 
+"$ROOT/scripts/sign-sparkle.sh" "$APP" "$SIGN_IDENTITY" --timestamp
 codesign --force --options runtime --timestamp \
   --entitlements "$ENTITLEMENTS" --sign "$SIGN_IDENTITY" "$APP"
 codesign --verify --strict --verbose=2 "$APP"

@@ -22,6 +22,7 @@ struct BucketBrowserApp: App {
             SidebarCommands()
             ToolbarCommands()
             BrowserCommands()
+            UpdateCommands()
         }
 
         Settings {
@@ -36,6 +37,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Needed when launched with `swift run`, which starts the binary outside an app bundle.
         NSApp.setActivationPolicy(.regular)
         if let appearance = DemoMode.appearance { NSApp.appearance = appearance }
+        #if SPARKLE
+        _ = Updates.controller
+        #endif
         NSApp.activate(ignoringOtherApps: true)
     }
 

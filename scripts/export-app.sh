@@ -11,8 +11,10 @@
 #                           App Store Connect instead; the app record must already exist there.
 #
 # Run scripts/build-app.sh first; the ad-hoc build is the input. For the App Store, build it
-# with UNIVERSAL=1 so it runs on Intel Macs too. Xcode must be signed in to an
-# account on team TEAM_ID (default 4TK5PNR392) that can create Developer ID signatures.
+# with UNIVERSAL=1 so it runs on Intel Macs too. A DIRECT=1 build (with Sparkle) can only be
+# exported for developer-id; scripts/release-direct.sh does that and notarizes it.
+# Xcode must be signed in to an account on team TEAM_ID (default 4TK5PNR392) that can create
+# Developer ID signatures.
 # DEV_PROFILE is a Mac development profile that covers com.bucketbrowser.app and the keychain
 # access group, such as the "Mac Team Provisioning Profile: *" Xcode keeps in
 # ~/Library/Developer/Xcode/UserData/Provisioning Profiles. The exporter replaces it with a
@@ -50,11 +52,21 @@ mkdir -p "$ARCHIVE/Products/Applications"
 ARCHIVED_APP="$ARCHIVE/Products/Applications/$APP_NAME.app"
 cp -R "$SOURCE_APP" "$ARCHIVED_APP"
 cp "$DEV_PROFILE" "$ARCHIVED_APP/Contents/embedded.provisionprofile"
+HAS_SPARKLE=0
+[[ -d "$ARCHIVED_APP/Contents/Frameworks/Sparkle.framework" ]] && HAS_SPARKLE=1
+if [[ "$HAS_SPARKLE" == 1 && "$METHOD" == app-store ]]; then
+  echo "This build includes Sparkle, which the App Store doesn't allow. Rebuild without DIRECT=1." >&2
+  exit 1
+fi
 
 # The exporter keeps the entitlements the archived app is signed with, so sign it with them here.
 ENTITLEMENTS="$OUT/BucketBrowser.entitlements"
 cp "$ROOT/Resources/BucketBrowser.entitlements" "$ENTITLEMENTS"
 "$ROOT/scripts/add-team-entitlements.sh" "$ENTITLEMENTS" "$TEAM_ID" "$BUNDLE_ID"
+if [[ "$HAS_SPARKLE" == 1 ]]; then
+  "$ROOT/scripts/add-sparkle-entitlements.sh" "$ENTITLEMENTS" "$BUNDLE_ID"
+fi
+"$ROOT/scripts/sign-sparkle.sh" "$ARCHIVED_APP" "$DEV_IDENTITY"
 codesign --force --options runtime --entitlements "$ENTITLEMENTS" --sign "$DEV_IDENTITY" "$ARCHIVED_APP"
 SIGNED_BY="$(codesign -dvv "$ARCHIVED_APP" 2>&1 | sed -n 's/^Authority=//p' | head -1)"
 
@@ -114,6 +126,6 @@ elif [[ "$METHOD" == app-store ]]; then
   pkgutil --check-signature "$EXPORT/$APP_NAME.pkg"
   echo "Exported $EXPORT/$APP_NAME.pkg"
 else
-  codesign --verify --strict --verbose=2 "$EXPORT/$APP_NAME.app"
+  codesign --verify --deep --strict --verbose=2 "$EXPORT/$APP_NAME.app"
   echo "Exported $EXPORT/$APP_NAME.app"
 fi

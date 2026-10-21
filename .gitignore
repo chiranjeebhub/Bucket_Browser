@@ -6,3 +6,5 @@ DerivedData/
 *.xcodeproj/xcuserdata/
 *.xcworkspace/xcuserdata/
 /BucketBrowser.xcodeproj
+.build-direct/
+Package.resolved
