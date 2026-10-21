@@ -5,8 +5,8 @@ cask "bucket-browser" do
   version "0.0.0"
   sha256 "0000000000000000000000000000000000000000000000000000000000000000"
 
-  url "https://github.com/chiranjeebhub/bucket-browser-site/releases/download/v#{version}/BucketBrowser.dmg",
-      verified: "github.com/chiranjeebhub/bucket-browser-site/"
+  url "https://github.com/chiranjeebhub/Bucket_Browser/releases/download/v#{version}/BucketBrowser.dmg",
+      verified: "github.com/chiranjeebhub/Bucket_Browser/"
   name "Bucket Browser"
   desc "Browse Amazon S3, Cloudflare R2 and S3-compatible buckets"
   homepage "https://chiranjeebhub.github.io/bucket-browser-site/"

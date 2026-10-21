@@ -28,7 +28,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 VERSION="${VERSION:?Set VERSION, for example VERSION=1.0.0}"
 NOTARY_PROFILE="${NOTARY_PROFILE:-bucket-browser-notary}"
-REPO_URL="${REPO_URL:-https://github.com/chiranjeebhub/bucket-browser-site}"
+REPO_URL="${REPO_URL:-https://github.com/chiranjeebhub/Bucket_Browser}"
 APP_NAME="Bucket Browser"
 TAG="v$VERSION"
 OUT="$ROOT/build/release"

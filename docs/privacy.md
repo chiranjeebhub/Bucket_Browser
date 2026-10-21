@@ -24,4 +24,4 @@ None. The app contains no analytics, advertising or tracking code, and it doesn'
 
 ## Contact
 
-Questions about this policy: open an issue at https://github.com/chiranjeebhub/S3_R2_bucket_browser/issues.
+Questions about this policy: open an issue at https://github.com/chiranjeebhub/Bucket_Browser/issues.

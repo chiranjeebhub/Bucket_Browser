@@ -94,7 +94,7 @@ The App Store copy uses the same keychain access group as the Developer ID copy,
 
 ## Direct download
 
-Besides the Mac App Store, Bucket Browser ships as a notarized disk image from the [website](https://chiranjeebhub.github.io/bucket-browser-site/), with GitHub Releases on the public `bucket-browser-site` repository as the download host (this repository is private) and a Homebrew cask. That edition updates itself with [Sparkle](https://sparkle-project.org). Sparkle is only in the direct build: `Package.swift` adds it when `BUCKET_BROWSER_DIRECT=1` is set, which `DIRECT=1 scripts/build-app.sh` does, and `scripts/export-app.sh app-store` refuses a build that contains it. Both editions share the bundle ID, sandbox and keychain group, so accounts carry over between them.
+Besides the Mac App Store, Bucket Browser ships as a notarized disk image from the [website](https://chiranjeebhub.github.io/bucket-browser-site/), from this repository's GitHub Releases, and through a Homebrew cask. That edition updates itself with [Sparkle](https://sparkle-project.org). Sparkle is only in the direct build: `Package.swift` adds it when `BUCKET_BROWSER_DIRECT=1` is set, which `DIRECT=1 scripts/build-app.sh` does, and `scripts/export-app.sh app-store` refuses a build that contains it. Both editions share the bundle ID, sandbox and keychain group, so accounts carry over between them.
 
 The update feed is `appcast.xml` on the website. Updates are signed with an EdDSA key; its public half is `Resources/SparklePublicKey.txt` and is built into the app, and the private half lives only in the login keychain of the Mac that makes releases. To create it the first time (after any `DIRECT=1` build has fetched Sparkle):
 
@@ -119,7 +119,7 @@ VERSION=1.0.1 DEV_PROFILE=path/to/development.provisionprofile SITE=../bucket-br
 
 It builds a universal app with Sparkle, signs it with Developer ID through Xcode, notarizes and staples it, wraps it in `BucketBrowser.dmg` (notarized and stapled too), zips it for Sparkle, signs the zip, adds the new entry to the site's `appcast.xml`, and fills in the cask. Everything lands in `build/release`. Then publish:
 
-1. Create the release `v1.0.1` on `chiranjeebhub/bucket-browser-site` with `BucketBrowser.dmg` and `BucketBrowser-1.0.1.zip` attached, for example `gh release create v1.0.1 build/release/BucketBrowser.dmg build/release/BucketBrowser-1.0.1.zip --repo chiranjeebhub/bucket-browser-site`.
+1. Create the release `v1.0.1` on this repository with `BucketBrowser.dmg` and `BucketBrowser-1.0.1.zip` attached, for example `gh release create v1.0.1 build/release/BucketBrowser.dmg build/release/BucketBrowser-1.0.1.zip --repo chiranjeebhub/Bucket_Browser`.
 2. Commit and push `appcast.xml` in the site repository. Installed copies see the update on their next check.
 3. Copy `build/release/bucket-browser.rb` to `Casks/` in `chiranjeebhub/homebrew-tap` and push, so `brew install --cask chiranjeebhub/tap/bucket-browser` gets the new version.
 
