@@ -15,8 +15,9 @@
 #       xcrun notarytool store-credentials bucket-browser-notary \
 #         --apple-id you@example.com --team-id 4TK5PNR392
 #     It asks for an app-specific password from account.apple.com.
-#   - The Sparkle EdDSA private key in the login keychain. Sparkle's generate_keys creates it once;
-#     its public half is Resources/SparklePublicKey.txt. Back it up with generate_keys -x.
+#   - The Sparkle EdDSA private key in the login keychain, under the account SPARKLE_ACCOUNT
+#     (default bucket-browser, so it doesn't share a key with other apps). Sparkle's generate_keys
+#     creates it once; its public half is Resources/SparklePublicKey.txt. Back it up with -x.
 #
 # Optional: SITE=path/to/bucket-browser-site adds the new entry to that checkout's appcast.xml.
 # NOTES_HTML=file puts that HTML in the entry as release notes. DMG_IDENTITY signs the disk image
@@ -34,6 +35,7 @@ OUT="$ROOT/build/release"
 APP="$ROOT/build/export/$APP_NAME.app"
 DMG="$OUT/BucketBrowser.dmg"
 ZIP="$OUT/BucketBrowser-$VERSION.zip"
+SPARKLE_ACCOUNT="${SPARKLE_ACCOUNT:-bucket-browser}"
 BUDDY=/usr/libexec/PlistBuddy
 
 # Submits a file to the notary service and waits. Prints Apple's log and stops if it's rejected.
@@ -88,7 +90,7 @@ xcrun stapler staple "$DMG"
 # Sign the update archive with the EdDSA key. sign_update prints the signature and length
 # attributes for the enclosure. The first run asks to use the key in the keychain.
 SIGN_UPDATE="$(find "$ROOT/.build-direct/artifacts" -path '*/bin/sign_update' -type f | head -1)"
-SIGNATURE="$("$SIGN_UPDATE" "$ZIP")"
+SIGNATURE="$("$SIGN_UPDATE" --account "$SPARKLE_ACCOUNT" "$ZIP")"
 NOTES=""
 if [[ -n "${NOTES_HTML:-}" ]]; then
   NOTES="      <description><![CDATA[$(cat "$NOTES_HTML")]]></description>"

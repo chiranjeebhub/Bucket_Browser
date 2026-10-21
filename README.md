@@ -99,8 +99,9 @@ Besides the Mac App Store, Bucket Browser ships as a notarized disk image from t
 The update feed is `appcast.xml` on the website. Updates are signed with an EdDSA key; its public half is `Resources/SparklePublicKey.txt` and is built into the app, and the private half lives only in the login keychain of the Mac that makes releases. To create it the first time (after any `DIRECT=1` build has fetched Sparkle):
 
 ```sh
-.build-direct/artifacts/sparkle/Sparkle/bin/generate_keys      # prints the public key
-.build-direct/artifacts/sparkle/Sparkle/bin/generate_keys -x sparkle-private-key  # backup; keep it safe and out of git
+BUCKET_BROWSER_DIRECT=1 swift package resolve --scratch-path .build-direct   # fetches Sparkle
+.build-direct/artifacts/sparkle/Sparkle/bin/generate_keys --account bucket-browser   # prints the public key
+.build-direct/artifacts/sparkle/Sparkle/bin/generate_keys --account bucket-browser -x sparkle-private-key  # backup; keep it out of git
 ```
 
 Notarization uses a notarytool keychain profile, stored once:
