@@ -1,12 +1,6 @@
 ![Bucket Browser](docs/social-preview.png)
 
 <p align="center">
-  <img src="Resources/AppIcon.png" width="128" alt="Bucket Browser icon">
-</p>
-
-<h1 align="center">Bucket Browser</h1>
-
-<p align="center">
   A fast, native Mac app for browsing Amazon S3, Cloudflare R2 and any S3-compatible storage.
 </p>
 
