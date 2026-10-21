@@ -43,7 +43,7 @@ if [[ "$DIRECT" == "1" ]]; then
   BUILD_FLAGS+=(--scratch-path "$ROOT/.build-direct" -Xlinker -rpath -Xlinker @executable_path/../Frameworks)
 fi
 if [[ "${UNIVERSAL:-0}" == "1" ]]; then
-  BUILD_FLAGS=(--arch arm64 --arch x86_64)
+  BUILD_FLAGS+=(--arch arm64 --arch x86_64)
 fi
 # SwiftPM records the deployment target as the SDK version in the binary, and App Store Connect
 # rejects apps that look built with an old SDK, so pass the real SDK version to the linker.
