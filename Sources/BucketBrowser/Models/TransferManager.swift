@@ -72,10 +72,13 @@ final class TransferManager {
 
     /// Uploads local files and folders into `prefix`, keeping folder structure.
     /// `onComplete` runs on the main actor after each dropped item finishes.
-    func upload(_ urls: [URL], client: S3Client, bucket: String, prefix: String, onComplete: @escaping @MainActor () -> Void) {
+    @discardableResult
+    func upload(_ urls: [URL], client: S3Client, bucket: String, prefix: String, onComplete: @escaping @MainActor () -> Void) -> [Transfer] {
+        var started: [Transfer] = []
         for url in urls {
             let transfer = Transfer(name: url.lastPathComponent, direction: .upload, destinationDescription: "\(bucket)/\(prefix)")
             transfers.insert(transfer, at: 0)
+            started.append(transfer)
 
             transfer.task = Task {
                 let accessing = url.startAccessingSecurityScopedResource()
@@ -111,6 +114,7 @@ final class TransferManager {
                 onComplete()
             }
         }
+        return started
     }
 
     struct LocalFile: Sendable {

@@ -51,10 +51,13 @@ Bucket Browser needs macOS 14 Sonoma or later and runs natively on Apple silicon
 - **Icon, list and column views** (⌘1, ⌘2, ⌘3), with sortable columns, folders kept on top and search within the current folder.
 - **Keyboard navigation:** back and forward (⌘[ and ⌘]), Enclosing Folder (⌘↑), Open (⌘↓ or double-click), and a clickable path bar with an item count.
 - **Quick Look:** press Space or ⌘Y to preview any file. Previews are cached by ETag.
+- **Stream audio and video:** Space plays media straight from the bucket, fetching only the parts being watched, so a large video starts in moments instead of after a full download.
+- **Mount a bucket as a drive:** right-click a bucket and choose Mount as Drive. It appears under Locations in Finder; files are listed straight away, download when you open them, and anything you save or drop there is uploaded. (Needs a signed build, since the drive reads your keys from iCloud Keychain.)
+- **Menu bar uploads:** drop files on the menu bar icon to upload them to the folder you last opened, or pick another bucket from its menu. It also copies links to your recent uploads.
 - **Drag and drop:** drop files or whole folders onto the window, a folder, a column or a path-bar segment to upload them. Drag items out of the window to download them.
 - **File operations:** New Folder (⇧⌘N), Rename, Delete (⌘⌫), Upload (⇧⌘U) and Download (⌥⌘D), all in context menus too. Renaming and deleting work on folders recursively.
 - **Get Info** (⌘I): size, dates, storage class, content type, ETag and user metadata.
-- **Shareable links:** copy a presigned URL that expires in an hour, a day or seven days, or copy the `s3://` URI.
+- **Shareable links:** copy presigned URLs for one or many files that expire in an hour, a day or seven days, or copy the `s3://` URI.
 - **Transfers** with progress and cancel. Large files upload in parallel multipart chunks.
 - **Keys stay in the Keychain**, and sync to your other Macs through iCloud Keychain.
 - **Private by design.** No analytics, no tracking and no servers of ours. See the [privacy policy](docs/privacy.md).

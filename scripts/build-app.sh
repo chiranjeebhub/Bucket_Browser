@@ -56,6 +56,37 @@ BIN_DIR="$(swift build -c "$CONFIG" ${BUILD_FLAGS[@]+"${BUILD_FLAGS[@]}"} --show
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN_DIR/BucketBrowser" "$APP/Contents/MacOS/BucketBrowser"
+
+# The File Provider extension that mounts buckets as drives.
+EXT="$APP/Contents/PlugIns/BucketBrowserFileProvider.appex"
+mkdir -p "$EXT/Contents/MacOS"
+cp "$BIN_DIR/BucketBrowserFileProvider" "$EXT/Contents/MacOS/BucketBrowserFileProvider"
+cat > "$EXT/Contents/Info.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key><string>BucketBrowserFileProvider</string>
+  <key>CFBundleDisplayName</key><string>$APP_NAME</string>
+  <key>CFBundleIdentifier</key><string>$BUNDLE_ID.FileProvider</string>
+  <key>CFBundleExecutable</key><string>BucketBrowserFileProvider</string>
+  <key>CFBundlePackageType</key><string>XPC!</string>
+  <key>CFBundleShortVersionString</key><string>$VERSION</string>
+  <key>CFBundleVersion</key><string>$BUILD_NUMBER</string>
+  <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+  <key>CFBundleDevelopmentRegion</key><string>en</string>
+  <key>CFBundleSupportedPlatforms</key><array><string>MacOSX</string></array>
+  <key>LSMinimumSystemVersion</key><string>14.0</string>
+  <key>NSHumanReadableCopyright</key><string>$COPYRIGHT</string>
+  <key>NSExtension</key>
+  <dict>
+    <key>NSExtensionPointIdentifier</key><string>com.apple.fileprovider-nonui</string>
+    <key>NSExtensionPrincipalClass</key><string>FileProviderExtension</string>
+    <key>NSExtensionFileProviderSupportsEnumeration</key><true/>
+  </dict>
+</dict>
+</plist>
+PLIST
 if [[ "$DIRECT" == "1" ]]; then
   mkdir -p "$APP/Contents/Frameworks"
   ditto "$BIN_DIR/Sparkle.framework" "$APP/Contents/Frameworks/Sparkle.framework"
@@ -134,6 +165,7 @@ fi
 
 if [[ -z "${SIGN_IDENTITY:-}" ]]; then
   "$ROOT/scripts/sign-sparkle.sh" "$APP" -
+  "$ROOT/scripts/sign-file-provider.sh" "$APP" -
   codesign --force --entitlements "$ENTITLEMENTS" --sign - "$APP"
   echo "Built $APP (ad-hoc signed; iCloud sync is off)"
   exit 0
@@ -150,6 +182,10 @@ cp "$PROVISIONING_PROFILE" "$APP/Contents/embedded.provisionprofile"
 "$ROOT/scripts/add-team-entitlements.sh" "$ENTITLEMENTS" "$TEAM_ID" "$BUNDLE_ID"
 
 "$ROOT/scripts/sign-sparkle.sh" "$APP" "$SIGN_IDENTITY" --timestamp
+# EXT_PROVISIONING_PROFILE covers com.bucketbrowser.app.FileProvider; without one the
+# extension can't read the app's keychain items, so mounting buckets won't work.
+"$ROOT/scripts/sign-file-provider.sh" "$APP" "$SIGN_IDENTITY" \
+  "$([[ -n "${EXT_PROVISIONING_PROFILE:-}" ]] && echo "$TEAM_ID")" "${EXT_PROVISIONING_PROFILE:-}" --timestamp
 codesign --force --options runtime --timestamp \
   --entitlements "$ENTITLEMENTS" --sign "$SIGN_IDENTITY" "$APP"
 codesign --verify --strict --verbose=2 "$APP"

@@ -76,6 +76,9 @@ struct BrowserView: View {
         .navigationTitle(model.title)
         .navigationSubtitle(subtitle)
         .quickLookPreview($model.quickLookURL)
+        .sheet(item: $model.streamingMedia) { media in
+            MediaPlayerView(media: media, model: model)
+        }
         .focusedSceneValue(\.browserModel, model)
         .sheet(item: $accountEditor) { target in
             AccountEditorView(target: target)

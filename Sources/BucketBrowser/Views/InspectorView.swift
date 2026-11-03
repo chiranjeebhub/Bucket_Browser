@@ -99,7 +99,7 @@ struct InspectorView: View {
 
             Section {
                 if !item.isFolder {
-                    Button("Quick Look") { model.quickLook([item]) }
+                    Button(BrowserModel.canStream(item) ? "Play" : "Quick Look") { model.quickLook([item]) }
                 }
                 Button("Download…") { model.download([item]) }
                 Button("Copy S3 URI") { model.copyKeys([item]) }

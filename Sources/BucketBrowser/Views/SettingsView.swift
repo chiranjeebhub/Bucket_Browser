@@ -5,6 +5,7 @@ struct SettingsView: View {
     @Environment(AccountStore.self) private var accounts
     @State private var selection: UUID?
     @State private var editor: AccountEditorTarget?
+    @AppStorage(MenuBarController.visibilityKey) private var showsMenuBarItem = true
 
     private var syncStatus: String {
         accounts.isSyncingWithICloud
@@ -58,8 +59,13 @@ struct SettingsView: View {
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .padding(8)
+
+            Divider()
+            Toggle("Show in menu bar, so you can drop files on the icon to upload them", isOn: $showsMenuBarItem)
+                .font(.callout)
+                .padding(8)
         }
-        .frame(width: 480, height: 350)
+        .frame(width: 480, height: 390)
         .sheet(item: $editor) { target in
             AccountEditorView(target: target)
                 .environment(accounts)

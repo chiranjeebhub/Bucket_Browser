@@ -4,8 +4,8 @@ import SwiftUI
 @main
 struct BucketBrowserApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    @State private var accounts = AccountStore()
-    @State private var transfers = TransferManager()
+    private var accounts: AccountStore { appDelegate.accounts }
+    private var transfers: TransferManager { appDelegate.transfers }
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -32,7 +32,13 @@ struct BucketBrowserApp: App {
     }
 }
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    // Owned here rather than by the App so the menu bar item can reach them too.
+    let accounts = AccountStore()
+    let transfers = TransferManager()
+    private var menuBar: MenuBarController?
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Needed when launched with `swift run`, which starts the binary outside an app bundle.
         NSApp.setActivationPolicy(.regular)
@@ -40,6 +46,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #if SPARKLE
         _ = Updates.controller
         #endif
+        menuBar = MenuBarController(accounts: accounts, transfers: transfers)
         NSApp.activate(ignoringOtherApps: true)
     }
 

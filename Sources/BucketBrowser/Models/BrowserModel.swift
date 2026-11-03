@@ -1,4 +1,5 @@
 import AppKit
+import AVFoundation
 import Foundation
 import Observation
 import S3Kit
@@ -35,6 +36,13 @@ enum ViewMode: String, CaseIterable, Identifiable {
     }
 }
 
+/// A file being played from a presigned link.
+struct StreamingMedia: Identifiable {
+    let id = UUID()
+    let item: BrowserItem
+    let url: URL
+}
+
 /// State and actions for one browser window.
 @MainActor
 @Observable
@@ -61,6 +69,8 @@ final class BrowserModel {
 
     // Sheets and alerts
     var quickLookURL: URL?
+    /// Audio or video playing straight from the bucket, without downloading it first.
+    var streamingMedia: StreamingMedia?
     var isPreparingQuickLook = false
     var alertMessage: String?
     var isWorking = false
@@ -154,6 +164,7 @@ final class BrowserModel {
             loadingPrefixes.removeAll()
         }
         location = newLocation
+        if !DemoMode.isEnabled { QuickUploadDestination.remember(newLocation) }
         selection.removeAll()
         searchText = ""
         // The column view needs every level from the root down.
@@ -268,6 +279,7 @@ final class BrowserModel {
                     alertMessage = error.localizedDescription
                 }
                 isWorking = false
+                DriveMounts.shared.bucketChanged(accountID: location.accountID, bucket: location.bucket)
                 guard self.location?.bucket == location.bucket else { return }
                 for prefix in Set(prefixes) { load(prefix) }
             }
@@ -383,6 +395,7 @@ final class BrowserModel {
             let (client, location) = try resolveClient()
             let target = prefix ?? location.prefix
             transfers.upload(urls, client: client, bucket: location.bucket, prefix: target) { [weak self] in
+                DriveMounts.shared.bucketChanged(accountID: location.accountID, bucket: location.bucket)
                 guard let self, self.location?.bucket == location.bucket else { return }
                 self.load(target)
             }
@@ -461,6 +474,10 @@ final class BrowserModel {
 
     func quickLook(_ items: [BrowserItem]? = nil) {
         guard let item = (items ?? selectedItems).first(where: { !$0.isFolder }) else { return }
+        if Self.canStream(item) && !DemoMode.isEnabled {
+            play(item)
+            return
+        }
         guard let resolved = try? resolveClient() else { return }
         let (client, location) = resolved
         isPreparingQuickLook = true
@@ -476,6 +493,34 @@ final class BrowserModel {
                 quickLookURL = destination
             } catch {
                 alertMessage = "Couldn’t preview “\(item.name)”: \(error.localizedDescription)"
+            }
+            isPreparingQuickLook = false
+        }
+    }
+
+    // MARK: - Streaming
+
+    /// Whether AVFoundation can play this file straight from a URL. Players fetch only the byte
+    /// ranges they need, so a large video starts right away instead of after a full download.
+    static func canStream(_ item: BrowserItem) -> Bool {
+        guard !item.isFolder, item.contentType.conforms(to: .audiovisualContent) else { return false }
+        return playableTypes.contains { item.contentType.conforms(to: $0) }
+    }
+
+    private static let playableTypes: [UTType] = AVURLAsset.audiovisualTypes().compactMap { UTType($0.rawValue) }
+
+    /// Plays audio or video from a presigned link, which the player reads with range requests.
+    func play(_ item: BrowserItem) {
+        guard let resolved = try? resolveClient() else { return }
+        let (client, location) = resolved
+        isPreparingQuickLook = true
+        Task {
+            do {
+                // Long enough to watch a feature-length video and seek around in it.
+                let url = try await client.presignedURL(bucket: location.bucket, key: item.key, expiresIn: 6 * 3600)
+                streamingMedia = StreamingMedia(item: item, url: url)
+            } catch {
+                alertMessage = "Couldn’t play “\(item.name)”: \(error.localizedDescription)"
             }
             isPreparingQuickLook = false
         }
@@ -497,13 +542,22 @@ final class BrowserModel {
     }
 
     func copyPresignedLink(_ item: BrowserItem, expiresIn seconds: Int) {
-        guard let resolved = try? resolveClient() else { return }
+        copyPresignedLinks([item], expiresIn: seconds)
+    }
+
+    /// Copies a time-limited link for each file, one per line. Folders have no link of their own.
+    func copyPresignedLinks(_ items: [BrowserItem], expiresIn seconds: Int) {
+        let files = items.filter { !$0.isFolder }
+        guard !files.isEmpty, let resolved = try? resolveClient() else { return }
         let (client, location) = resolved
         Task {
             do {
-                let url = try await client.presignedURL(bucket: location.bucket, key: item.key, expiresIn: seconds)
+                var links: [String] = []
+                for file in files {
+                    links.append(try await client.presignedURL(bucket: location.bucket, key: file.key, expiresIn: seconds).absoluteString)
+                }
                 NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(url.absoluteString, forType: .string)
+                NSPasteboard.general.setString(links.joined(separator: "\n"), forType: .string)
             } catch {
                 alertMessage = error.localizedDescription
             }

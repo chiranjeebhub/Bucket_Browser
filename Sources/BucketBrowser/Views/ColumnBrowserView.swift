@@ -178,7 +178,7 @@ private struct FilePreviewColumn: View {
             }
             .font(.caption)
             HStack {
-                Button("Quick Look") { model.quickLook([item]) }
+                Button(BrowserModel.canStream(item) ? "Play" : "Quick Look") { model.quickLook([item]) }
                 Button("Download…") { model.download([item]) }
             }
             .controlSize(.small)

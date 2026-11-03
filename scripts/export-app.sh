@@ -67,6 +67,9 @@ if [[ "$HAS_SPARKLE" == 1 ]]; then
   "$ROOT/scripts/add-sparkle-entitlements.sh" "$ENTITLEMENTS" "$BUNDLE_ID"
 fi
 "$ROOT/scripts/sign-sparkle.sh" "$ARCHIVED_APP" "$DEV_IDENTITY"
+# The team profile (DEV_PROFILE) is a wildcard, so it covers the extension too. The exporter
+# swaps it for a profile made for com.bucketbrowser.app.FileProvider.
+"$ROOT/scripts/sign-file-provider.sh" "$ARCHIVED_APP" "$DEV_IDENTITY" "$TEAM_ID" "$DEV_PROFILE"
 codesign --force --options runtime --entitlements "$ENTITLEMENTS" --sign "$DEV_IDENTITY" "$ARCHIVED_APP"
 SIGNED_BY="$(codesign -dvv "$ARCHIVED_APP" 2>&1 | sed -n 's/^Authority=//p' | head -1)"
 

@@ -13,6 +13,8 @@ struct SidebarView: View {
     @Binding var accountEditor: AccountEditorTarget?
     @Environment(AccountStore.self) private var accounts
     @State private var accountToRemove: Account?
+    @State private var mountError: String?
+    private let drives = DriveMounts.shared
 
     var body: some View {
         List(selection: selection) {
@@ -54,11 +56,19 @@ struct SidebarView: View {
             isPresented: Binding(get: { accountToRemove != nil }, set: { if !$0 { accountToRemove = nil } })
         ) {
             Button("Remove Account", role: .destructive) {
-                if let account = accountToRemove { accounts.remove(account.id) }
+                if let account = accountToRemove {
+                    drives.removeAll(accountID: account.id)
+                    accounts.remove(account.id)
+                }
                 accountToRemove = nil
             }
         } message: {
             Text("Its credentials are deleted from your Keychain. Nothing in the buckets is changed.")
+        }
+        .alert("Couldn’t Change the Drive", isPresented: Binding(get: { mountError != nil }, set: { if !$0 { mountError = nil } })) {
+            Button("OK") { mountError = nil }
+        } message: {
+            Text(mountError ?? "")
         }
     }
 
@@ -90,7 +100,15 @@ struct SidebarView: View {
             }
             ForEach(buckets) { bucket in
                 Label {
-                    Text(bucket.name)
+                    HStack {
+                        Text(bucket.name)
+                        if drives.isMounted(accountID: account.id, bucket: bucket.name) {
+                            Spacer()
+                            Image(systemName: "externaldrive.connected.to.line.below")
+                                .foregroundStyle(.secondary)
+                                .help("Mounted as a drive")
+                        }
+                    }
                 } icon: {
                     Image(nsImage: FileIcons.bucket)
                         .resizable()
@@ -98,6 +116,7 @@ struct SidebarView: View {
                 }
                 .tag(SidebarSelection(accountID: account.id, bucket: bucket.name))
                 .contextMenu {
+                    driveMenu(account, bucket: bucket.name)
                     Button("Copy Bucket Name") {
                         NSPasteboard.general.clearContents()
                         NSPasteboard.general.setString(bucket.name, forType: .string)
@@ -106,6 +125,25 @@ struct SidebarView: View {
                     accountMenu(account)
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func driveMenu(_ account: Account, bucket: String) -> some View {
+        if drives.isAvailable {
+            if drives.isMounted(accountID: account.id, bucket: bucket) {
+                Button("Show Drive") { perform { try await drives.reveal(accountID: account.id, bucket: bucket) } }
+                Button("Unmount Drive") { perform { try await drives.unmount(accountID: account.id, bucket: bucket) } }
+            } else {
+                Button("Mount as Drive") { perform { try await drives.mount(account, bucket: bucket) } }
+            }
+            Divider()
+        }
+    }
+
+    private func perform(_ action: @escaping @MainActor () async throws -> Void) {
+        Task {
+            do { try await action() } catch { mountError = error.localizedDescription }
         }
     }
 

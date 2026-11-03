@@ -26,7 +26,7 @@ struct ItemMenu: View {
                 Button("Open") { model.open(item) }
             }
             if !files.isEmpty {
-                Button("Quick Look") { model.quickLook(files) }
+                Button(files.count == 1 && BrowserModel.canStream(files[0]) ? "Play" : "Quick Look") { model.quickLook(files) }
             }
             Divider()
             Button(items.count == 1 ? "Download “\(items[0].name)”…" : "Download \(items.count) Items…") {
@@ -41,11 +41,11 @@ struct ItemMenu: View {
                 model.showInspector = true
             }
             Button(items.count == 1 ? "Copy S3 URI" : "Copy \(items.count) S3 URIs") { model.copyKeys(items) }
-            if items.count == 1, let file = files.first {
-                Menu("Copy Shareable Link") {
-                    Button("Expires in 1 Hour") { model.copyPresignedLink(file, expiresIn: 3600) }
-                    Button("Expires in 1 Day") { model.copyPresignedLink(file, expiresIn: 86400) }
-                    Button("Expires in 7 Days") { model.copyPresignedLink(file, expiresIn: 604_800) }
+            if !files.isEmpty {
+                Menu(files.count == 1 ? "Copy Shareable Link" : "Copy \(files.count) Shareable Links") {
+                    Button("Expires in 1 Hour") { model.copyPresignedLinks(files, expiresIn: 3600) }
+                    Button("Expires in 1 Day") { model.copyPresignedLinks(files, expiresIn: 86400) }
+                    Button("Expires in 7 Days") { model.copyPresignedLinks(files, expiresIn: 604_800) }
                 }
             }
             Divider()
