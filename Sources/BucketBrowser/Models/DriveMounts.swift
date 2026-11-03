@@ -69,7 +69,13 @@ final class DriveMounts {
                 if let url { continuation.resume(returning: url) } else { continuation.resume(throwing: error ?? CocoaError(.fileNoSuchFile)) }
             }
         }
-        NSWorkspace.shared.open(url)
+        // The URL is security-scoped: a sandboxed app has to claim access before Finder will
+        // open it for us, or Finder answers that the app "does not have permission to open" it.
+        let accessing = url.startAccessingSecurityScopedResource()
+        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+        if !NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: url.path) {
+            NSWorkspace.shared.activateFileViewerSelecting([url])
+        }
     }
 
     /// Tells the drive to look for changes, after the app uploaded, deleted or renamed something.
