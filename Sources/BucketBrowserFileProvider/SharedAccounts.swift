@@ -70,17 +70,19 @@ enum SharedAccounts {
     }
 }
 
-/// A mounted bucket. The domain identifier is "<account UUID>/<bucket>"; bucket names can't
-/// contain a slash, so the split is unambiguous. The app builds the same string.
+/// A mounted bucket. The domain identifier is "<account UUID>_<bucket>". A UUID string is always
+/// 36 characters, so the split is unambiguous whatever the bucket is called. The app builds the
+/// same string. (File Provider rejects identifiers containing a slash.)
 struct MountedBucket {
     let accountID: UUID
     let bucket: String
 
     init?(domainIdentifier: String) {
-        guard let slash = domainIdentifier.firstIndex(of: "/"),
-              let id = UUID(uuidString: String(domainIdentifier[..<slash])) else { return nil }
+        let separator = domainIdentifier.index(domainIdentifier.startIndex, offsetBy: 36, limitedBy: domainIdentifier.endIndex)
+        guard let separator, separator < domainIdentifier.endIndex, domainIdentifier[separator] == "_",
+              let id = UUID(uuidString: String(domainIdentifier[..<separator])) else { return nil }
         accountID = id
-        bucket = String(domainIdentifier[domainIdentifier.index(after: slash)...])
+        bucket = String(domainIdentifier[domainIdentifier.index(after: separator)...])
         guard !bucket.isEmpty else { return nil }
     }
 }

@@ -20,9 +20,10 @@ final class DriveMounts {
     /// The extension reads the access keys from iCloud Keychain, which only signed builds can use.
     var isAvailable: Bool { KeychainStore.isSyncAvailable && !DemoMode.isEnabled }
 
-    /// "<account UUID>/<bucket>". The extension parses the same format; bucket names have no slash.
+    /// "<account UUID>_<bucket>". The extension parses the same format by the UUID's fixed length.
+    /// File Provider rejects identifiers with a slash ("Invalid argument"), since it uses them in paths.
     static func identifier(accountID: UUID, bucket: String) -> String {
-        "\(accountID.uuidString)/\(bucket)"
+        "\(accountID.uuidString)_\(bucket)"
     }
 
     func isMounted(accountID: UUID, bucket: String) -> Bool {
@@ -81,7 +82,7 @@ final class DriveMounts {
 
     /// Unmounts every bucket of an account that was removed.
     func removeAll(accountID: UUID) {
-        let prefix = accountID.uuidString + "/"
+        let prefix = accountID.uuidString + "_"
         for identifier in mounted where identifier.hasPrefix(prefix) {
             let bucket = String(identifier.dropFirst(prefix.count))
             Task { try? await unmount(accountID: accountID, bucket: bucket) }
